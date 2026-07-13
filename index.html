@@ -123,7 +123,12 @@
 </div>
 
 <script src="data.js"></script>
+<!-- 결과 수집 위젯: 교사가 공유링크에 ?rc=<Apps Script exec URL> 를 붙이면 제출 활성화 -->
+<script src="https://hongyul67-cpu.github.io/result-collector/collector.js"
+        data-tool="자동화설비 실기 도면게임"></script>
 <script>
+/* 결과제출 기본 도구명(모드별 탭 구분용 베이스) */
+const RC_BASE=(window.ResultCollector&&ResultCollector.config&&ResultCollector.config.tool)||"자동화설비 실기 도면게임";
 /* ---------------- data layer ---------------- */
 const LS_KEY="apx_data_v1";
 const IMG=id=>`images/${id}.png`;
@@ -205,11 +210,11 @@ function renderHome(){
 }
 
 /* ---------------- MODE 1 : QUIZ ---------------- */
-let qState=null;
+let qState=null, sessStart=0;
 function renderQuiz(){
   const pool=shuffle(quizPool());
   if(!pool.length){app.innerHTML=header("도면 해독 퀴즈")+`<div class="panel">등록된 문제가 없습니다. 편집 화면에서 추가하세요.</div>`;return;}
-  qState={pool,i:0,correct:0,answered:false};
+  qState={pool,i:0,correct:0,answered:false}; sessStart=Date.now();
   drawQuiz();
 }
 function drawQuiz(){
@@ -259,7 +264,7 @@ function nextQuiz(){
 let mState=null;
 function renderMatch(){
   if(DATA.length<4){app.innerHTML=header("3면도 ↔ 3D 매칭")+`<div class="panel">매칭에는 도면이 4장 이상 필요합니다.</div>`;return;}
-  mState={order:shuffle(DATA.map(d=>d.id)),i:0,correct:0,answered:false};
+  mState={order:shuffle(DATA.map(d=>d.id)),i:0,correct:0,answered:false}; sessStart=Date.now();
   drawMatch();
 }
 function drawMatch(){
@@ -311,7 +316,7 @@ let dState=null;
 function renderDim(){
   const pool=shuffle(dimPool());
   if(!pool.length){app.innerHTML=header("모델링 치수 찾기")+`<div class="panel">등록된 치수 문제가 없습니다.</div>`;return;}
-  dState={pool,i:0,correct:0,answered:false,tries:0};
+  dState={pool,i:0,correct:0,answered:false,tries:0}; sessStart=Date.now();
   drawDim();
 }
 function drawDim(){
@@ -367,20 +372,35 @@ function nextDim(){const s=dState;s.i++;s.answered=false;s.tries=0;
   drawDim();}
 
 /* ---------------- session result ---------------- */
+const MODE_LABEL={quiz:"도면해독", match:"3D매칭", dim:"치수찾기"};
+function rcReady(){return !!(window.ResultCollector&&ResultCollector.config&&ResultCollector.config.endpoint);}
+function submitResult(mode,correct,total,dur){
+  if(!window.ResultCollector){toast("제출 위젯을 불러오지 못했어요");return;}
+  ResultCollector.config.tool=RC_BASE+" · "+(MODE_LABEL[mode]||mode);
+  ResultCollector.open({score:Math.round(correct/total*100),correct,total,durationSec:dur});
+}
 function finishSession(title,correct,total,again){
   const pct=Math.round(correct/total*100);
+  const dur=sessStart?Math.round((Date.now()-sessStart)/1000):0;
+  const mm=String(Math.floor(dur/60)).padStart(2,"0"), ss=String(dur%60).padStart(2,"0");
   const msg=pct>=90?"완벽해요! 🏆":pct>=70?"잘했어요! 👍":pct>=50?"조금만 더! 💪":"복습이 필요해요 📚";
+  const submitBtn=rcReady()
+    ? `<button class="btn amber" onclick="submitResult('${again}',${correct},${total},${dur})">📤 선생님께 결과 제출</button>`
+    : "";
   app.innerHTML=header(title,"결과")+`
   <div class="panel" style="text-align:center">
     <div style="font-size:20px;font-weight:800;margin:6px 0 2px">${msg}</div>
     <div class="statgrid">
       <div><div class="n" style="color:var(--amber)">${pct}%</div><div class="l">정답률</div></div>
       <div><div class="n" style="color:var(--cyan)">${correct}/${total}</div><div class="l">맞힌 개수</div></div>
+      <div><div class="n">${mm}:${ss}</div><div class="l">걸린 시간</div></div>
     </div>
     <div class="row" style="justify-content:center">
+      ${submitBtn}
       <button class="btn cyan" onclick="go('${again}')">다시 풀기</button>
       <button class="btn" onclick="go('home')">홈으로</button>
     </div>
+    ${rcReady()?"":`<div class="sub" style="margin-top:12px;font-size:12px">※ 선생님이 나눠준 <b>제출용 링크</b>로 열면 ‘결과 제출’ 버튼이 나타나요.</div>`}
   </div>`;
 }
 
