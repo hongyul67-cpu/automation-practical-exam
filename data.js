@@ -110,9 +110,9 @@ window.DEFAULT_DRAWINGS = [
        choices:["평행도","직각도","진원도","위치도"], answer:0, explain:"//는 데이텀 A에 대한 평행도."},
     ],
     dims:[
-      {ask:"바깥 큰 원의 지름 ∅는?", answer:115, unit:"mm", hint:"∅115."},
-      {ask:"허브(중앙 원판)의 지름 ∅는?", answer:68, unit:"mm", hint:"∅68."},
-      {ask:"축 구멍의 지름 ∅는?", answer:35, unit:"mm", hint:"∅35."},
+      {ask:"바깥 큰 원(날개 끝)의 지름 ∅는?", answer:115, unit:"mm", hint:"∅115."},
+      {ask:"옆에서 본 원판(측면도)의 지름 ∅는?", answer:74, unit:"mm", hint:"측면도 ∅74."},
+      {ask:"축 구멍의 지름 ∅는?", answer:35, unit:"mm", hint:"∅35(키홈 포함)."},
     ],
   },
   {
@@ -267,7 +267,7 @@ window.DEFAULT_DRAWINGS = [
        answer:0, explain:"R=반지름."},
     ],
     dims:[
-      {ask:"부품 전체 높이는?", answer:80, unit:"mm", hint:"80±0.2."},
+      {ask:"바닥 플랜지의 두께는?", answer:16, unit:"mm", hint:"단면도 플랜지 두께 16."},
       {ask:"세로 베어링 구멍의 안지름 ∅는?", answer:40, unit:"mm", hint:"∅40H7."},
       {ask:"바닥 플랜지의 바깥지름 ∅는?", answer:92, unit:"mm", hint:"∅92."},
     ],
@@ -302,9 +302,9 @@ window.DEFAULT_DRAWINGS = [
        answer:0, explain:"H7 = 구멍 기준 공차."},
     ],
     dims:[
-      {ask:"부품 전체 높이는?", answer:106, unit:"mm", hint:"정면도 세로 106."},
+      {ask:"부품 전체 높이(정면도)는?", answer:106, unit:"mm", hint:"정면도 세로 106."},
       {ask:"클램프가 잡는 파이프 지름 ∅는?", answer:40, unit:"mm", hint:"∅40."},
-      {ask:"받침(윗판) 가로 폭은?", answer:64, unit:"mm", hint:"64."},
+      {ask:"클램프(고리)의 바깥지름 ∅는?", answer:52, unit:"mm", hint:"∅52."},
     ],
   },
   {
@@ -350,14 +350,14 @@ window.DEFAULT_DRAWINGS = [
        choices:["∅30","R23","R45","∅6"], answer:0, explain:"고리 안지름 ∅30H7, 바깥 R23."},
       {q:"‘4-∅6 DRILL THRU’는 구멍이 몇 개인가?",
        choices:["4개","6개","46개","2개"], answer:0, explain:"밑판 고정 구멍 4개(∅6 관통)."},
-      {q:"고리 바깥의 ‘R45’는 무엇인가?",
+      {q:"아래쪽 갈고리의 ‘R45’는 무엇인가?",
        choices:["반지름 45mm 곡선","지름 45","구멍 45개","각도 45°"],
-       answer:0, explain:"R=반지름. 고리 바깥 곡선."},
+       answer:0, explain:"R=반지름. 갈고리(훅)를 이루는 큰 곡선."},
     ],
     dims:[
       {ask:"부품 전체 길이(가로)는?", answer:120, unit:"mm", hint:"(120)."},
       {ask:"고리 구멍의 안지름 ∅는?", answer:30, unit:"mm", hint:"∅30H7."},
-      {ask:"고리 바깥 곡선의 반지름 R은?", answer:45, unit:"mm", hint:"R45."},
+      {ask:"아래쪽 갈고리(훅)의 큰 곡선 반지름 R은?", answer:45, unit:"mm", hint:"R45."},
     ],
   },
 ];
