@@ -79,6 +79,14 @@
   .statgrid{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;margin:16px 0}
   .statgrid .n{font-size:28px;font-weight:800}
   .statgrid .l{font-size:12px;color:var(--sub);text-align:center}
+  /* 도면별 과제 목록 */
+  .tasklist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:560px){.tasklist{grid-template-columns:1fr}}
+  .taskcard{display:flex;align-items:center;gap:10px;text-align:left;background:var(--panel2);
+    border:1px solid var(--border);border-radius:10px;padding:8px 10px;transition:.12s;color:var(--text)}
+  .taskcard:hover{border-color:var(--amber);transform:translateY(-1px)}
+  .taskcard img{width:64px;height:46px;object-fit:contain;background:#fff;border-radius:5px;flex:none}
+  .taskcard .tt{min-width:0}
   /* editor */
   .ed-list{display:grid;gap:8px}
   .ed-item{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;
@@ -166,7 +174,7 @@ function lbZoom(dir){lbScale=Math.max(.4,Math.min(4,lbScale+dir*0.3));const im=$
 $("lb").addEventListener("click",e=>{if(e.target.id==="lb"||e.target.id==="lbcanvas")closeLB();});
 
 /* ---------------- routing ---------------- */
-function go(view,arg){window.scrollTo(0,0);({home:renderHome,quiz:renderQuiz,match:renderMatch,dim:renderDim,edit:renderEditor,editOne:renderEditOne}[view]||renderHome)(arg);}
+function go(view,arg){window.scrollTo(0,0);({home:renderHome,quiz:renderQuiz,match:renderMatch,dim:renderDim,task:renderTaskList,edit:renderEditor,editOne:renderEditOne}[view]||renderHome)(arg);}
 
 function header(title,sub){
   return `<div class="top">
@@ -202,6 +210,9 @@ function renderHome(){
     <button class="card" onclick="go('dim')">
       <div class="ic">🔢</div><div class="t">④ 모델링 치수 찾기</div>
       <div class="d">모델링에 필요한 치수를 도면에서 찾아 숫자로 입력한다.</div></button>
+    <button class="card" onclick="go('task')">
+      <div class="ic">📋</div><div class="t">⑤ 도면별 과제 · 제출</div>
+      <div class="d">도면 하나를 골라 그 도면의 해독+치수 문제를 풀고 선생님께 제출한다.</div></button>
     <button class="card" onclick="go('edit')">
       <div class="ic">✏️</div><div class="t">문제 편집 · 추가</div>
       <div class="d">선생님용. 문제·정답 수정, 도면 추가, JSON 내보내기/불러오기.</div></button>
@@ -226,7 +237,7 @@ function drawQuiz(){
     </div>
     <div class="q">${esc(q.q)}</div>
     <div class="choices" id="choices">
-      ${q.choices.map((c,i)=>`<button class="choice" data-i="${i}" onclick="answerQuiz(${i})">${esc(c)}</button>`).join("")}
+      ${choiceOrder(q).map(i=>`<button class="choice" data-i="${i}" onclick="answerQuiz(${i})">${esc(q.choices[i])}</button>`).join("")}
     </div>
     <div class="feedback" id="fb"></div>
     <div class="row" style="margin-top:14px">
@@ -238,6 +249,8 @@ function drawQuiz(){
     <div class="progress"><i style="width:${(s.i)/s.pool.length*100}%"></i></div>
   </div>`;
 }
+/* 보기 순서를 섞되(정답이 늘 같은 자리에 오지 않게) 문항당 한 번 정해 재렌더에도 유지 */
+function choiceOrder(q){ if(!q._order) q._order=shuffle(q.choices.map((_,i)=>i)); return q._order; }
 function answerQuiz(i){
   const s=qState; if(s.answered)return; s.answered=true;
   const q=s.pool[s.i], ok=i===q.answer;
@@ -374,11 +387,12 @@ function nextDim(){const s=dState;s.i++;s.answered=false;s.tries=0;
 /* ---------------- session result ---------------- */
 const MODE_LABEL={quiz:"도면해독", match:"3D매칭", dim:"치수찾기"};
 function rcReady(){return !!(window.ResultCollector&&ResultCollector.config&&ResultCollector.config.endpoint);}
-function submitResult(mode,correct,total,dur){
+function openSubmit(suffix,correct,total,dur,extra){
   if(!window.ResultCollector){toast("제출 위젯을 불러오지 못했어요");return;}
-  ResultCollector.config.tool=RC_BASE+" · "+(MODE_LABEL[mode]||mode);
-  ResultCollector.open({score:Math.round(correct/total*100),correct,total,durationSec:dur});
+  ResultCollector.config.tool=RC_BASE+(suffix?" · "+suffix:"");
+  ResultCollector.open(Object.assign({score:Math.round(correct/total*100),correct,total,durationSec:dur},extra||{}));
 }
+function submitResult(mode,correct,total,dur){ openSubmit(MODE_LABEL[mode]||mode,correct,total,dur); }
 function finishSession(title,correct,total,again){
   const pct=Math.round(correct/total*100);
   const dur=sessStart?Math.round((Date.now()-sessStart)/1000):0;
@@ -401,6 +415,128 @@ function finishSession(title,correct,total,again){
       <button class="btn" onclick="go('home')">홈으로</button>
     </div>
     ${rcReady()?"":`<div class="sub" style="margin-top:12px;font-size:12px">※ 선생님이 나눠준 <b>제출용 링크</b>로 열면 ‘결과 제출’ 버튼이 나타나요.</div>`}
+  </div>`;
+}
+
+/* ---------------- MODE 5 : 도면별 과제(제출) ---------------- */
+let pState=null;
+function renderTaskList(){
+  app.innerHTML=header("⑤ 도면별 과제","풀 도면(과제)을 선택하세요")+`
+  <div class="panel">
+    <div class="sub" style="margin-bottom:10px">도면 하나를 고르면 그 도면의 <b>해독 문제 + 치수 문제</b>를 순서대로 풀고, 끝나면 결과를 제출할 수 있어요.</div>
+    <div class="tasklist">
+      ${DATA.map(d=>`<button class="taskcard" onclick="startTask('${d.id}')">
+        <img src="${IMG(d.id)}" onerror="this.style.opacity=.15" alt="">
+        <div class="tt"><b>도면 ${esc(d.id)}</b><div class="sub">${esc(d.name)}</div>
+        <div class="sub" style="font-size:11px">해독 ${(d.quiz||[]).length} · 치수 ${(d.dims||[]).length}</div></div>
+      </button>`).join("")}
+    </div>
+  </div>`;
+}
+function startTask(id){
+  const d=DATA.find(x=>x.id===id); if(!d){go('task');return;}
+  const items=[]
+    .concat((d.quiz||[]).map(q=>({kind:'quiz',data:q})))
+    .concat((d.dims||[]).map(q=>({kind:'dim',data:q})));
+  if(!items.length){toast("이 도면엔 등록된 문제가 없어요");return;}
+  pState={id:id,name:d.name,items,i:0,correct:0,answered:false,tries:0,start:Date.now()};
+  drawTask();
+}
+function drawTask(){
+  const s=pState, it=s.items[s.i], q=it.data;
+  const head=header(`도면 ${s.id} 과제`,`${s.name} · ${it.kind==='quiz'?'해독':'치수'} 문제`);
+  const foot=`
+    <div class="feedback" id="fb"></div>
+    <div class="row" style="margin-top:14px">
+      <span class="pill">${s.i+1} / ${s.items.length}</span>
+      <span class="pill">맞힘 ${s.correct}</span>
+      <div class="spacer"></div>
+      <button class="btn amber" id="nextb" style="display:none" onclick="nextTask()">${s.i+1>=s.items.length?"결과 보기 →":"다음 →"}</button>
+    </div>
+    <div class="progress"><i style="width:${(s.i)/s.items.length*100}%"></i></div>`;
+  const imgbox=`<div class="imgbox" onclick="openLB('${IMG(s.id)}','${esc(s.id+" "+s.name)}')">
+      <img src="${IMG(s.id)}" alt="도면 ${s.id}"><span class="zoomhint">🔍 눌러서 확대</span></div>`;
+  if(it.kind==='quiz'){
+    app.innerHTML=head+`<div class="panel">${imgbox}
+      <div class="q">${esc(q.q)}</div>
+      <div class="choices" id="choices">
+        ${choiceOrder(q).map(i=>`<button class="choice" data-i="${i}" onclick="answerTaskQuiz(${i})">${esc(q.choices[i])}</button>`).join("")}
+      </div>${foot}</div>`;
+  }else{
+    app.innerHTML=head+`<div class="panel">${imgbox}
+      <div class="q">${esc(q.ask)}</div>
+      <div class="row">
+        <input class="numin mono" id="numin" type="number" inputmode="decimal" placeholder="?" autocomplete="off"
+          onkeydown="if(event.key==='Enter')checkTaskDim()">
+        <span class="unit">${esc(q.unit||"mm")}</span>
+        <button class="btn cyan" id="chk" onclick="checkTaskDim()">확인</button>
+        <button class="link" onclick="taskHint()">힌트 보기</button>
+      </div>${foot}</div>`;
+    setTimeout(()=>$("numin")&&$("numin").focus(),50);
+  }
+}
+function answerTaskQuiz(i){
+  const s=pState; if(s.answered)return; s.answered=true;
+  const q=s.items[s.i].data, ok=i===q.answer; if(ok)s.correct++;
+  document.querySelectorAll("#choices .choice").forEach(b=>{
+    const bi=+b.dataset.i;
+    if(bi===q.answer)b.classList.add("correct"); else if(bi===i)b.classList.add("wrong"); else b.classList.add("dim");
+    b.style.pointerEvents="none";
+  });
+  const fb=$("fb");fb.className="feedback show "+(ok?"ok":"no");
+  fb.innerHTML=(ok?"✅ 정답! ":"❌ 오답. 정답: <b>"+esc(q.choices[q.answer])+"</b><br>")+esc(q.explain||"");
+  $("nextb").style.display="";
+}
+function taskHint(){const q=pState.items[pState.i].data;const fb=$("fb");fb.className="feedback show";fb.style.background="rgba(79,209,232,.1)";fb.style.border="1px solid var(--cyan)";fb.innerHTML="💡 "+esc(q.hint||"도면 치수선을 다시 확인하세요.");}
+function checkTaskDim(){
+  const s=pState; if(s.answered)return;
+  const q=s.items[s.i].data, v=parseFloat($("numin").value);
+  if(isNaN(v)){toast("숫자를 입력하세요");return;}
+  const fb=$("fb");
+  if(Math.abs(v-q.answer)<1e-6){
+    s.answered=true;s.correct++;
+    fb.className="feedback show ok";fb.innerHTML=`✅ 정답! <b class="mono">${q.answer}${esc(q.unit||"mm")}</b>`;
+    $("chk").disabled=true;$("numin").disabled=true;$("nextb").style.display="";
+  }else{
+    s.tries++;
+    fb.className="feedback show no";
+    fb.innerHTML=`❌ 다시 · 정답이 아니에요.`+(s.tries>=2?` (힌트: ${esc(q.hint||"")})`:"");
+    if(s.tries>=3){
+      s.answered=true;
+      fb.innerHTML=`정답은 <b class="mono">${q.answer}${esc(q.unit||"mm")}</b> 입니다. `+esc(q.hint||"");
+      $("chk").disabled=true;$("numin").disabled=true;$("nextb").style.display="";
+    }
+  }
+}
+function nextTask(){
+  const s=pState; s.i++; s.answered=false; s.tries=0;
+  if(s.i>=s.items.length){finishTask();return;}
+  drawTask();
+}
+function finishTask(){
+  const s=pState, total=s.items.length, correct=s.correct;
+  const pct=Math.round(correct/total*100);
+  const dur=Math.round((Date.now()-s.start)/1000);
+  const mm=String(Math.floor(dur/60)).padStart(2,"0"), ss=String(dur%60).padStart(2,"0");
+  const msg=pct>=90?"완벽해요! 🏆":pct>=70?"잘했어요! 👍":pct>=50?"조금만 더! 💪":"복습이 필요해요 📚";
+  const submitBtn=rcReady()
+    ? `<button class="btn amber" onclick="openSubmit('도면${s.id}',${correct},${total},${dur})">📤 이 과제 제출</button>`
+    : "";
+  app.innerHTML=header(`도면 ${s.id} 과제`,`${s.name} · 결과`)+`
+  <div class="panel" style="text-align:center">
+    <div style="font-size:20px;font-weight:800;margin:6px 0 2px">${msg}</div>
+    <div class="statgrid">
+      <div><div class="n" style="color:var(--amber)">${pct}%</div><div class="l">정답률</div></div>
+      <div><div class="n" style="color:var(--cyan)">${correct}/${total}</div><div class="l">맞힌 개수</div></div>
+      <div><div class="n">${mm}:${ss}</div><div class="l">걸린 시간</div></div>
+    </div>
+    <div class="row" style="justify-content:center">
+      ${submitBtn}
+      <button class="btn cyan" onclick="startTask('${s.id}')">다시 풀기</button>
+      <button class="btn" onclick="go('task')">다른 도면</button>
+    </div>
+    ${rcReady()?`<div class="sub" style="margin-top:12px;font-size:12px">제출 시트 탭: <b>${esc(RC_BASE)} · 도면${esc(s.id)}</b></div>`
+               :`<div class="sub" style="margin-top:12px;font-size:12px">※ 선생님이 나눠준 <b>제출용 링크</b>로 열면 ‘제출’ 버튼이 나타나요.</div>`}
   </div>`;
 }
 
