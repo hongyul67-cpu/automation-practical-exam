@@ -79,6 +79,12 @@
   .statgrid{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;margin:16px 0}
   .statgrid .n{font-size:28px;font-weight:800}
   .statgrid .l{font-size:12px;color:var(--sub);text-align:center}
+  /* 계급표 사다리 */
+  .tier-ladder{display:grid;gap:8px}
+  .tier-row{display:flex;align-items:center;gap:12px;background:var(--panel2);
+    border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .tier-row.cur{background:rgba(242,169,59,.1);border-color:var(--amber)}
+  .tier-ic{font-size:26px;width:34px;text-align:center;flex:none}
   /* 도면별 과제 목록 */
   .tasklist{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media(max-width:560px){.tasklist{grid-template-columns:1fr}}
@@ -179,7 +185,7 @@ function lbZoom(dir){lbScale=Math.max(.4,Math.min(4,lbScale+dir*0.3));const im=$
 $("lb").addEventListener("click",e=>{if(e.target.id==="lb"||e.target.id==="lbcanvas")closeLB();});
 
 /* ---------------- routing ---------------- */
-function go(view,arg){window.scrollTo(0,0);({home:renderHome,quiz:renderQuiz,match:renderMatch,dim:renderDim,task:renderTaskList,edit:renderEditor,editOne:renderEditOne}[view]||renderHome)(arg);}
+function go(view,arg){window.scrollTo(0,0);({home:renderHome,quiz:renderQuiz,match:renderMatch,dim:renderDim,task:renderTaskList,rank:renderRank,edit:renderEditor,editOne:renderEditOne}[view]||renderHome)(arg);}
 
 function header(title,sub){
   return `<div class="top">
@@ -205,7 +211,8 @@ function renderHome(){
     <span class="pill">해독 문제 ${nQ}개</span>
     <span class="pill">치수 문제 ${nD}개</span>
   </div>
-  ${hasRank()?`<div id="rankcard" style="margin-bottom:12px">${Rank.card()}</div>`:""}
+  ${hasRank()?`<div id="rankcard" onclick="go('rank')" style="margin-bottom:4px;cursor:pointer">${Rank.card()}</div>
+  <div style="text-align:right;margin-bottom:12px"><button class="link" onclick="go('rank')">🏆 계급표 보기 ›</button></div>`:""}
   <div class="cards">
     <button class="card" onclick="go('quiz')">
       <div class="ic">📐</div><div class="t">① 도면 해독 퀴즈</div>
@@ -428,6 +435,45 @@ function finishSession(title,correct,total,again){
       <button class="btn" onclick="go('home')">홈으로</button>
     </div>
     ${rcReady()?"":`<div class="sub" style="margin-top:12px;font-size:12px">※ 선생님이 나눠준 <b>제출용 링크</b>로 열면 ‘결과 제출’ 버튼이 나타나요.</div>`}
+  </div>`;
+}
+
+/* ---------------- 계급표(랭크 사다리) ---------------- */
+function renderRank(){
+  if(!hasRank()){app.innerHTML=header("🏆 계급표")+`<div class="panel">랭크 위젯을 불러오지 못했어요. 인터넷 연결을 확인하세요.</div>`;return;}
+  const g=Rank.get();
+  const rows=Rank.tiers.slice().reverse().map(t=>{     // 마스터가 위로
+    const achieved=g.rp>=t.min, isCur=g.tier&&g.tier.key===t.key, need=Math.max(0,t.min-g.rp);
+    return `<div class="tier-row${isCur?' cur':''}" style="border-left:5px solid ${t.c}">
+      <div class="tier-ic">${t.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;color:${achieved?t.c:'var(--sub)'}">${esc(t.name)}${t.div>1?` <span class="sub" style="font-size:11px;font-weight:600">${t.div}단계</span>`:''}</div>
+        <div class="sub" style="font-size:12px">${t.min} RP 이상</div>
+      </div>
+      <div style="font-size:12px;text-align:right;white-space:nowrap">${isCur?'<b style="color:var(--amber)">● 현재</b>':achieved?'<span style="color:var(--green)">✔ 달성</span>':'<span class="sub">'+need+' RP 남음</span>'}</div>
+    </div>`;
+  }).join("");
+  const H=Rank.history()||[];
+  const hist=H.slice(0,10).map(h=>`<div class="row" style="gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="flex:1">${esc(h.m||"연습")}</span>
+      <span class="sub">${h.s}점</span>
+      <span style="color:${h.g>=0?'var(--green)':'var(--red)'};font-weight:700;width:64px;text-align:right">${h.g>=0?'+':''}${h.g} RP</span>
+    </div>`).join("") || '<div class="sub" style="padding:6px 0">아직 기록이 없어요. 문제를 풀면 RP가 쌓여요.</div>';
+  app.innerHTML=header("🏆 계급표","풀수록 RP가 쌓여 계급이 올라가요")+`
+  <div class="panel">
+    <div onclick="void 0">${Rank.card()}</div>
+    <div class="statgrid" style="margin:14px 0 4px">
+      <div><div class="n" style="color:var(--amber)">${g.rp}</div><div class="l">현재 RP</div></div>
+      <div><div class="n" style="color:var(--cyan)">${g.bestRp||g.rp}</div><div class="l">최고 RP</div></div>
+      <div><div class="n">${g.plays||0}</div><div class="l">푼 횟수</div></div>
+      <div><div class="n">${g.bestStreak||0}</div><div class="l">최고 연승</div></div>
+    </div>
+    <div class="hr"></div>
+    <div class="tier-ladder">${rows}</div>
+  </div>
+  <div class="panel" style="margin-top:12px">
+    <b class="tag">최근 기록</b>
+    <div style="margin-top:6px">${hist}</div>
   </div>`;
 }
 
