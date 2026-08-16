@@ -134,6 +134,10 @@
 <!-- 결과 수집 위젯: 교사가 공유링크에 ?rc=<Apps Script exec URL> 를 붙이면 제출 활성화 -->
 <script src="https://hongyul67-cpu.github.io/links/collector.js"
         data-tool="자동화설비 실기 도면게임"></script>
+<!-- 계급·랭크포인트 위젯(도구별 RP 누적) -->
+<script src="https://hongyul67-cpu.github.io/links/rank.js" data-tool="자동화설비실기도면"></script>
+<!-- 수업 모드(🎓/F9/?class=1): 해설은 .feedback에 뜨므로 알려줌 -->
+<script>window.CLASSMODE={root:".wrap",choices:".choice",explain:".feedback"};</script>
 <script src="https://hongyul67-cpu.github.io/links/class-mode.js"></script>
 <script>
 /* 결과제출 기본 도구명(모드별 탭 구분용 베이스) */
@@ -201,6 +205,7 @@ function renderHome(){
     <span class="pill">해독 문제 ${nQ}개</span>
     <span class="pill">치수 문제 ${nD}개</span>
   </div>
+  ${hasRank()?`<div id="rankcard" style="margin-bottom:12px">${Rank.card()}</div>`:""}
   <div class="cards">
     <button class="card" onclick="go('quiz')">
       <div class="ic">📐</div><div class="t">① 도면 해독 퀴즈</div>
@@ -388,10 +393,15 @@ function nextDim(){const s=dState;s.i++;s.answered=false;s.tries=0;
 /* ---------------- session result ---------------- */
 const MODE_LABEL={quiz:"도면해독", match:"3D매칭", dim:"치수찾기"};
 function rcReady(){return !!(window.ResultCollector&&ResultCollector.config&&ResultCollector.config.endpoint);}
+/* ---- 계급·랭크포인트(rank.js) ---- */
+function hasRank(){return typeof Rank!=="undefined"&&Rank&&typeof Rank.award==="function";}
+function awardRP(pct,mode){ if(!hasRank())return null; try{return Rank.award(pct,{mode:mode});}catch(e){return null;} }
+function rpBox(res){ if(!res||!hasRank())return ""; try{return Rank.resultBox(res);}catch(e){return "";} }
+function rankDetail(){ if(!hasRank())return ""; try{const g=Rank.get();return ((g.tier&&g.tier.full)||"")+" · "+(g.rp||0)+"RP";}catch(e){return "";} }
 function openSubmit(suffix,correct,total,dur,extra){
   if(!window.ResultCollector){toast("제출 위젯을 불러오지 못했어요");return;}
   ResultCollector.config.tool=RC_BASE+(suffix?" · "+suffix:"");
-  ResultCollector.open(Object.assign({score:Math.round(correct/total*100),correct,total,durationSec:dur},extra||{}));
+  ResultCollector.open(Object.assign({score:Math.round(correct/total*100),correct,total,durationSec:dur,detail:rankDetail()},extra||{}));
 }
 function submitResult(mode,correct,total,dur){ openSubmit(MODE_LABEL[mode]||mode,correct,total,dur); }
 function finishSession(title,correct,total,again){
@@ -399,6 +409,7 @@ function finishSession(title,correct,total,again){
   const dur=sessStart?Math.round((Date.now()-sessStart)/1000):0;
   const mm=String(Math.floor(dur/60)).padStart(2,"0"), ss=String(dur%60).padStart(2,"0");
   const msg=pct>=90?"완벽해요! 🏆":pct>=70?"잘했어요! 👍":pct>=50?"조금만 더! 💪":"복습이 필요해요 📚";
+  const rp=awardRP(pct, MODE_LABEL[again]||again);
   const submitBtn=rcReady()
     ? `<button class="btn amber" onclick="submitResult('${again}',${correct},${total},${dur})">📤 선생님께 결과 제출</button>`
     : "";
@@ -410,6 +421,7 @@ function finishSession(title,correct,total,again){
       <div><div class="n" style="color:var(--cyan)">${correct}/${total}</div><div class="l">맞힌 개수</div></div>
       <div><div class="n">${mm}:${ss}</div><div class="l">걸린 시간</div></div>
     </div>
+    ${rpBox(rp)}
     <div class="row" style="justify-content:center">
       ${submitBtn}
       <button class="btn cyan" onclick="go('${again}')">다시 풀기</button>
@@ -520,6 +532,7 @@ function finishTask(){
   const dur=Math.round((Date.now()-s.start)/1000);
   const mm=String(Math.floor(dur/60)).padStart(2,"0"), ss=String(dur%60).padStart(2,"0");
   const msg=pct>=90?"완벽해요! 🏆":pct>=70?"잘했어요! 👍":pct>=50?"조금만 더! 💪":"복습이 필요해요 📚";
+  const rp=awardRP(pct, "도면"+s.id);
   const submitBtn=rcReady()
     ? `<button class="btn amber" onclick="openSubmit('도면${s.id}',${correct},${total},${dur})">📤 이 과제 제출</button>`
     : "";
@@ -531,6 +544,7 @@ function finishTask(){
       <div><div class="n" style="color:var(--cyan)">${correct}/${total}</div><div class="l">맞힌 개수</div></div>
       <div><div class="n">${mm}:${ss}</div><div class="l">걸린 시간</div></div>
     </div>
+    ${rpBox(rp)}
     <div class="row" style="justify-content:center">
       ${submitBtn}
       <button class="btn cyan" onclick="startTask('${s.id}')">다시 풀기</button>
