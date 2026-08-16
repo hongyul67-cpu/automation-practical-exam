@@ -239,6 +239,7 @@ function renderQuiz(){
   const pool=shuffle(quizPool());
   if(!pool.length){app.innerHTML=header("도면 해독 퀴즈")+`<div class="panel">등록된 문제가 없습니다. 편집 화면에서 추가하세요.</div>`;return;}
   qState={pool,i:0,correct:0,answered:false}; sessStart=Date.now();
+  bumpTry("도면해독");
   drawQuiz();
 }
 function drawQuiz(){
@@ -291,6 +292,7 @@ let mState=null;
 function renderMatch(){
   if(DATA.length<4){app.innerHTML=header("3면도 ↔ 3D 매칭")+`<div class="panel">매칭에는 도면이 4장 이상 필요합니다.</div>`;return;}
   mState={order:shuffle(DATA.map(d=>d.id)),i:0,correct:0,answered:false}; sessStart=Date.now();
+  bumpTry("3D매칭");
   drawMatch();
 }
 function drawMatch(){
@@ -343,6 +345,7 @@ function renderDim(){
   const pool=shuffle(dimPool());
   if(!pool.length){app.innerHTML=header("모델링 치수 찾기")+`<div class="panel">등록된 치수 문제가 없습니다.</div>`;return;}
   dState={pool,i:0,correct:0,answered:false,tries:0}; sessStart=Date.now();
+  bumpTry("치수찾기");
   drawDim();
 }
 function drawDim(){
@@ -405,10 +408,18 @@ function hasRank(){return typeof Rank!=="undefined"&&Rank&&typeof Rank.award==="
 function awardRP(pct,mode){ if(!hasRank())return null; try{return Rank.award(pct,{mode:mode});}catch(e){return null;} }
 function rpBox(res){ if(!res||!hasRank())return ""; try{return Rank.resultBox(res);}catch(e){return "";} }
 function rankDetail(){ if(!hasRank())return ""; try{const g=Rank.get();return ((g.tier&&g.tier.full)||"")+" · "+(g.rp||0)+"RP";}catch(e){return "";} }
+function rankTier(){ try{return (window.Rank&&Rank.get().tier.full)||undefined;}catch(e){return undefined;} }
+/* 활동별 도전 횟수(생기부 키워드용) — 활동 시작 때 bumpTry, 제출 때 getTry */
+function bumpTry(m){const K="apx_try_v1";let d={};try{d=JSON.parse(localStorage.getItem(K))||{};}catch(e){}d[m]=(d[m]||0)+1;try{localStorage.setItem(K,JSON.stringify(d));}catch(e){}return d[m];}
+function getTry(m){const K="apx_try_v1";let d={};try{d=JSON.parse(localStorage.getItem(K))||{};}catch(e){}return d[m]||1;}
+/* 제출 — collector.js가 mode(활동명)·retry(도전횟수)·tier(계급)로 생기부(세특) 키워드를 자동 생성 */
 function openSubmit(suffix,correct,total,dur,extra){
   if(!window.ResultCollector){toast("제출 위젯을 불러오지 못했어요");return;}
   ResultCollector.config.tool=RC_BASE+(suffix?" · "+suffix:"");
-  ResultCollector.open(Object.assign({score:Math.round(correct/total*100),correct,total,durationSec:dur,detail:rankDetail()},extra||{}));
+  ResultCollector.open(Object.assign({
+    score:Math.round(correct/total*100), correct, total, durationSec:dur,
+    mode:suffix, retry:getTry(suffix), tier:rankTier(), detail:rankDetail()
+  },extra||{}));
 }
 function submitResult(mode,correct,total,dur){ openSubmit(MODE_LABEL[mode]||mode,correct,total,dur); }
 function finishSession(title,correct,total,again){
@@ -434,7 +445,8 @@ function finishSession(title,correct,total,again){
       <button class="btn cyan" onclick="go('${again}')">다시 풀기</button>
       <button class="btn" onclick="go('home')">홈으로</button>
     </div>
-    ${rcReady()?"":`<div class="sub" style="margin-top:12px;font-size:12px">※ 선생님이 나눠준 <b>제출용 링크</b>로 열면 ‘결과 제출’ 버튼이 나타나요.</div>`}
+    ${rcReady()?`<div class="sub" style="margin-top:12px;font-size:12px">🧑‍🏫 제출하면 활동·성취·반복·계급을 바탕으로 한 <b>생기부(세특) 키워드</b>가 자동으로 함께 기록돼요.</div>`
+              :`<div class="sub" style="margin-top:12px;font-size:12px">※ 선생님이 나눠준 <b>제출용 링크</b>로 열면 ‘결과 제출’ 버튼이 나타나요.</div>`}
   </div>`;
 }
 
@@ -499,6 +511,7 @@ function startTask(id){
     .concat((d.dims||[]).map(q=>({kind:'dim',data:q})));
   if(!items.length){toast("이 도면엔 등록된 문제가 없어요");return;}
   pState={id:id,name:d.name,items,i:0,correct:0,answered:false,tries:0,start:Date.now()};
+  bumpTry("도면"+id);
   drawTask();
 }
 function drawTask(){
@@ -596,7 +609,7 @@ function finishTask(){
       <button class="btn cyan" onclick="startTask('${s.id}')">다시 풀기</button>
       <button class="btn" onclick="go('task')">다른 도면</button>
     </div>
-    ${rcReady()?`<div class="sub" style="margin-top:12px;font-size:12px">제출 시트 탭: <b>${esc(RC_BASE)} · 도면${esc(s.id)}</b></div>`
+    ${rcReady()?`<div class="sub" style="margin-top:12px;font-size:12px">제출 시트 탭: <b>${esc(RC_BASE)} · 도면${esc(s.id)}</b><br>🧑‍🏫 활동·성취·반복·계급 기반 <b>생기부(세특) 키워드</b>가 자동으로 함께 기록돼요.</div>`
                :`<div class="sub" style="margin-top:12px;font-size:12px">※ 선생님이 나눠준 <b>제출용 링크</b>로 열면 ‘제출’ 버튼이 나타나요.</div>`}
   </div>`;
 }
