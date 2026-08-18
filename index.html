@@ -416,7 +416,15 @@ function getTry(m){const K="apx_try_v1";let d={};try{d=JSON.parse(localStorage.g
 /* 제출 — collector.js가 mode(활동명)·retry(도전횟수)·tier(계급)로 생기부(세특) 키워드를 자동 생성 */
 function openSubmit(suffix,correct,total,dur,extra){
   if(!window.ResultCollector){toast("제출 위젯을 불러오지 못했어요");return;}
-  ResultCollector.config.tool=RC_BASE+(suffix?" · "+suffix:"");
+  if(!rcReady()){
+      alert(['이 링크로는 제출이 되지 않아요.','',
+        '선생님이 나눠 준 제출용 링크(주소 뒤에 ?rc=... 가 붙은 링크)로',
+        '들어와야 반·번호를 입력하고 결과를 보낼 수 있습니다.','',
+        '연습은 지금 이대로 계속 하셔도 됩니다.'].join(String.fromCharCode(10)));
+    return;
+  }
+  /* 시트 탭은 하나로 — 파트는 mode 로 (규약 §1 ①) */
+  ResultCollector.config.tool=RC_BASE;
   ResultCollector.open(Object.assign({
     score:Math.round(correct/total*100), correct, total, durationSec:dur,
     mode:suffix, retry:getTry(suffix), tier:rankTier(), detail:rankDetail()
@@ -429,9 +437,8 @@ function finishSession(title,correct,total,again){
   const mm=String(Math.floor(dur/60)).padStart(2,"0"), ss=String(dur%60).padStart(2,"0");
   const msg=pct>=90?"완벽해요! 🏆":pct>=70?"잘했어요! 👍":pct>=50?"조금만 더! 💪":"복습이 필요해요 📚";
   const rp=awardRP(pct, MODE_LABEL[again]||again);
-  const submitBtn=rcReady()
-    ? `<button class="btn amber" onclick="submitResult('${again}',${correct},${total},${dur})">📤 선생님께 결과 제출</button>`
-    : "";
+  /* 제출 버튼은 ?rc= 링크가 아니어도 항상 보인다 (규약 §1 ③) */
+  const submitBtn=`<button class="btn amber" onclick="submitResult('${again}',${correct},${total},${dur})">📤 선생님께 결과 제출</button>`;
   app.innerHTML=header(title,"결과")+`
   <div class="panel" style="text-align:center">
     <div style="font-size:20px;font-weight:800;margin:6px 0 2px">${msg}</div>
