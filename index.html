@@ -122,6 +122,114 @@
   .warn{font-size:12px;color:var(--amber);background:rgba(242,169,59,.1);border:1px solid var(--amber);
     border-radius:8px;padding:8px 10px;margin-top:10px;line-height:1.5}
   a.plain{color:var(--cyan)}
+
+/* ══════════════════════════════════════════════════════════════
+   수업 슬라이드(전자칠판) — 예전 board.html 이 index 안으로 들어온 것.
+   원래는 그 파일 하나가 페이지 전체였으므로 화면을 통째로 덮는 층으로 만들고
+   규칙을 전부 #boardwrap 안으로 가뒀다 (index 와 .top · .bar 가 겹친다).
+   ══════════════════════════════════════════════════════════════ */
+#boardwrap{position:fixed;inset:0;z-index:99000;display:flex;flex-direction:column}
+#boardwrap.hide{display:none!important}
+
+  #boardwrap{
+    --bg:#0c1017; --panel:#161c27; --panel2:#1e2634; --line:#2c3648;
+    --ink:#e9eefa; --dim:#98a5bd; --accent:#5b8cff; --good:#3ad995; --gold:#ffd166;
+    /* 화면 크기에 맞춰 글자가 같이 커진다 — 교실 뒤에서도 읽히게.
+       가로뿐 아니라 세로(vh)도 함께 본다. 넓지만 낮은 창에서 글이 넘치지 않게. */
+    --h:clamp(22px,min(3.6vw,6.2vh),52px);
+    --p:clamp(14px,min(1.9vw,3.3vh),29px);
+    --s:clamp(11px,min(1.1vw,1.9vh),17px);
+  }
+  #boardwrap *{box-sizing:border-box}
+  #boardwrap, #boardwrap{height:100%}
+  #boardwrap{margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
+    font-family:"Pretendard","Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.5;
+    -webkit-text-size-adjust:100%}
+
+  #boardwrap #deck{position:fixed;inset:0;display:flex;flex-direction:column}
+
+  /* 상단 바 */
+#boardwrap .top{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--line);
+    background:rgba(10,14,20,.92);flex:none}
+  #boardwrap .sect{font-size:var(--s);color:var(--accent);font-weight:800;letter-spacing:.5px;white-space:nowrap}
+  #boardwrap .top .sp{flex:1}
+  #boardwrap .pos{font-size:var(--s);color:var(--dim);font-variant-numeric:tabular-nums}
+  #boardwrap .top select, #boardwrap .top a{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:8px;padding:5px 9px;font-size:var(--s);font-family:inherit;max-width:34vw;text-decoration:none}
+  #boardwrap .bar{height:3px;background:var(--panel2);flex:none}
+  #boardwrap .bar>i{display:block;height:100%;background:var(--accent);transition:width .25s}
+
+  /* 본문 — 한 화면에 들어가야 하므로 넘치면 줄어들게만 한다 */
+/* 아래쪽 여백을 조금 더 두는 이유: 공용 backbar 단추가 왼쪽 아래에 떠 있어서
+     내용이 거기까지 내려오면 글자를 가린다 */
+#boardwrap .body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
+    padding:min(3vh,26px) 3vw calc(min(3vh,26px) + 34px)}
+  #boardwrap .slide{width:100%;max-width:1400px;display:flex;flex-direction:column;gap:min(2.2vh,18px)}
+  #boardwrap h2{font-size:var(--h);font-weight:900;margin:0;letter-spacing:-.02em;line-height:1.2}
+  #boardwrap .lead{font-size:var(--p);color:var(--accent);font-weight:800;margin:0}
+
+  /* 그림 + 요점 2단 (좁으면 세로로) */
+#boardwrap .two{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:min(3vw,30px);
+    align-items:center;min-height:0}
+  #boardwrap .fig{background:#fff;border-radius:12px;padding:8px;display:flex;align-items:center;justify-content:center;min-height:0}
+  #boardwrap .fig img{max-width:100%;max-height:52vh;object-fit:contain;display:block}
+  /* 세로 화면(태블릿·폰)에서는 그림과 글이 위아래로 쌓이므로 그림 높이를 줄인다 */
+@media (max-aspect-ratio:1/1){ #boardwrap .two{grid-template-columns:1fr} #boardwrap .fig img{max-height:28vh}}
+  #boardwrap .cap{color:var(--dim);font-size:var(--s);text-align:center;margin:6px 0 0}
+
+  #boardwrap ul.pts{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:min(1.4vh,11px)}
+  #boardwrap ul.pts li{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:10px;padding:min(1.6vh,14px) min(1.6vw,18px);font-size:var(--p)}
+  #boardwrap ul.pts.solo li{padding:min(2.2vh,20px) min(2vw,24px)}
+
+  /* 표기 카드 */
+#boardwrap .syms{display:grid;gap:min(1.6vh,14px);grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
+  #boardwrap .sym{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:min(2vh,18px) min(1.8vw,20px);display:flex;flex-direction:column;gap:6px}
+  #boardwrap .sym .k{font-size:clamp(18px,min(2.9vw,5vh),42px);font-weight:900;color:var(--gold);
+    font-family:ui-monospace,Consolas,Menlo,monospace;line-height:1.15}
+  #boardwrap .sym .d{font-size:var(--p);color:var(--ink)}
+
+  /* 체크리스트 */
+#boardwrap ol.check{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:min(1.5vh,12px)}
+  #boardwrap ol.check li{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:min(1.8vh,15px) min(1.8vw,18px);font-size:var(--p);display:flex;gap:12px;align-items:flex-start}
+  #boardwrap ol.check li::before{content:"☐";color:var(--good);font-weight:900;flex:none}
+
+  /* 확인 문제 — 보기 4개 + 해설까지 한 화면에 들어가야 해서 제목을 조금 작게 잡는다 */
+#boardwrap .qhead{font-size:clamp(18px,min(2.6vw,4.5vh),38px);font-weight:900;margin:0;line-height:1.25}
+  #boardwrap .opts{display:flex;flex-direction:column;gap:min(1.4vh,11px);margin:0;padding:0;list-style:none;counter-reset:o}
+  #boardwrap .opts li{counter-increment:o;background:var(--panel);border:2px solid var(--line);border-radius:11px;
+    padding:min(1.7vh,15px) min(1.8vw,18px);font-size:var(--p);display:flex;gap:12px;cursor:pointer}
+  #boardwrap .opts li::before{content:counter(o);flex:none;width:1.7em;height:1.7em;border-radius:50%;
+    background:var(--panel2);color:var(--dim);display:grid;place-items:center;font-weight:800;font-size:.8em}
+  #boardwrap .opts li:hover{border-color:var(--accent)}
+  #boardwrap .opts.done li{cursor:default}
+  #boardwrap .opts li.on{border-color:var(--good);background:rgba(58,217,149,.12)}
+  #boardwrap .opts li.on::before{content:"✔";background:var(--good);color:#04222B}
+  #boardwrap .opts.done li:not(.on){opacity:.5}
+  #boardwrap .exp{background:rgba(58,217,149,.1);border:1px solid var(--good);border-radius:11px;
+    padding:min(1.8vh,15px) min(1.8vw,18px);font-size:var(--p)}
+
+  /* 하단 이동 */
+#boardwrap .nav{display:flex;gap:10px;padding:10px 16px;border-top:1px solid var(--line);
+    background:rgba(10,14,20,.92);flex:none}
+  #boardwrap .nav button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;
+    padding:min(1.6vh,14px);font-size:clamp(13px,min(1.4vw,2.4vh),20px);font-weight:800;cursor:pointer;font-family:inherit}
+  #boardwrap .nav .prev{width:22%}
+  #boardwrap .nav .next{flex:1;background:linear-gradient(135deg,#3b82f6,#5b8cff);border-color:transparent;color:#fff}
+  #boardwrap .nav button:disabled{opacity:.35;cursor:default}
+  #boardwrap .hintkey{font-size:var(--s);color:var(--dim);align-self:center;padding:0 4px;white-space:nowrap}
+  @media (max-width:640px){ #boardwrap .hintkey{display:none}}
+
+  /* 예전에는 여기서 공용 backbar.js 단추를 위로 밀어 올렸다(--navh).
+     이제는 슬라이드가 열려 있는 동안 떠 있는 위젯을 아예 가린다 —
+     board.js·board-pro.js 와 같은 방식이라 자리를 다툴 일이 없다. */
+body.bd33-open #bb-btn,
+body.bd33-open .tr-btn,
+body.bd33-open .cm-launch,
+body.bd33-open #rk-badge{visibility:hidden!important;pointer-events:none!important}
+body.bd33-open{overflow:hidden}
 </style>
 </head>
 <body>
@@ -207,7 +315,7 @@ function renderHome(){
     <h1>공개도면 문제 게임</h1>
     <div class="sub">자동화설비기능사 실기 대비 · 도면 읽기 훈련</div></div>
     <div class="spacer"></div>
-    <a class="btn ghost" href="board.html" style="text-decoration:none">🖥️ 수업 슬라이드 (전자칠판)</a>
+    <button class="btn ghost" type="button" onclick="SlideDeck.open()">🖥️ 수업 슬라이드 (전자칠판)</button>
     <button class="btn ghost" onclick="go('edit')">⚙ 문제 편집</button>
   </div>
   <div class="row" style="margin-bottom:12px">
@@ -774,5 +882,152 @@ go('home');
 <!-- 공용 기록 초기화 (교실 공용 PC용) -->
 <script src="https://hongyul67-cpu.github.io/links/reset.js"></script>
 <script src="https://hongyul67-cpu.github.io/links/backbar.js"></script>
+
+<!-- ══════ 수업 슬라이드(전자칠판) — 예전 board.html ══════ -->
+<div id="boardwrap" class="hide">
+
+
+<div id="deck">
+  <div class="top">
+    <span class="sect" id="sect"></span>
+    <span class="sp"></span>
+    <select id="jump" title="슬라이드 건너뛰기"></select>
+    <span class="pos" id="pos"></span>
+    <button type="button" onclick="SlideDeck.close()">✕ 닫기 (도면게임으로)</button>
+  </div>
+  <div class="bar"><i id="barfill"></i></div>
+  <div class="body"><div class="slide" id="slide"></div></div>
+  <div class="nav">
+    <button class="prev" id="prev" onclick="SlideDeck.prev()">◀ 이전</button>
+    <span class="hintkey">← → 또는 스페이스로 넘김</span>
+    <button class="next" id="next" onclick="SlideDeck.next()">다음 ▶</button>
+  </div>
+</div>
+
+
+</div>
+<script src="lesson.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════════
+   수업 슬라이드 — 예전 board.html 이 index 안으로 들어온 것.
+   전체가 함수 안에 갇혀 있다: index.html 과 esc · go 같은 이름이 겹쳐서,
+   밖에 두면 서로 덮어써 양쪽이 다 깨진다.
+   밖으로 내보내는 것은 window.SlideDeck 하나뿐이다.
+   ══════════════════════════════════════════════════════════════ */
+(function(){
+
+/* lesson.js 가 window.LESSON 을 미리 선언해 둔다 */
+var DECK = window.LESSON || [];
+var i = 0;        // 현재 슬라이드
+var shown = false; // 확인 문제의 정답이 공개됐는지
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>]/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+/* 목차 — 섹션이 바뀌는 첫 슬라이드만 넣어 한 번에 건너뛸 수 있게 한다 */
+(function buildJump(){
+  var sel = document.getElementById('jump'), last = null, html = '';
+  DECK.forEach(function(s,k){
+    if(s.s !== last){ html += '<option value="'+k+'">'+esc(s.s)+'</option>'; last = s.s; }
+  });
+  sel.innerHTML = html;
+  sel.onchange = function(){ go(+sel.value); };
+})();
+
+function pts(list, solo){
+  if(!list || !list.length) return '';
+  return '<ul class="pts'+(solo?' solo':'')+'">'
+       + list.map(function(p){ return '<li>'+p+'</li>'; }).join('') + '</ul>';
+}
+function figure(s){
+  return '<div><div class="fig"><img src="'+s.img+'" alt=""></div>'
+       + (s.cap ? '<p class="cap">'+esc(s.cap)+'</p>' : '') + '</div>';
+}
+
+function render(){
+  var s = DECK[i]; if(!s) return;
+  document.getElementById('sect').textContent = s.s || '';
+  document.getElementById('pos').textContent = (i+1) + ' / ' + DECK.length;
+  document.getElementById('barfill').style.width = ((i+1)/DECK.length*100) + '%';
+  var sel = document.getElementById('jump');
+  for(var k=i; k>=0; k--){ if(sel.querySelector('option[value="'+k+'"]')){ sel.value = k; break; } }
+
+  var h = '';
+  if(s.kind === 'quiz'){
+    h += '<p class="lead">확인 문제</p>';
+    h += '<h2 class="qhead">'+s.q+'</h2>';
+    h += '<ul class="opts'+(shown?' done':'')+'" id="opts">'
+       + s.o.map(function(o,k){
+           return '<li'+(shown && k===s.a ? ' class="on"' : '')+' data-k="'+k+'" onclick="SlideDeck.reveal()">'+esc(o)+'</li>';
+         }).join('') + '</ul>';
+    if(shown && s.e) h += '<div class="exp">💡 '+s.e+'</div>';
+  }else if(s.kind === 'title'){
+    h += (s.lead ? '<p class="lead">'+esc(s.lead)+'</p>' : '') + '<h2>'+esc(s.t)+'</h2>' + pts(s.pts, true);
+  }else if(s.kind === 'symbol'){
+    h += '<h2>'+esc(s.t)+'</h2><div class="syms">'
+       + s.sym.map(function(x){ return '<div class="sym"><div class="k">'+esc(x.k)+'</div><div class="d">'+x.d+'</div></div>'; }).join('')
+       + '</div>' + pts(s.pts);
+  }else if(s.kind === 'check'){
+    h += '<h2>'+esc(s.t)+'</h2><ol class="check">'
+       + s.items.map(function(x){ return '<li><span>'+x+'</span></li>'; }).join('') + '</ol>';
+  }else{ /* concept */
+    h += '<h2>'+esc(s.t)+'</h2>';
+    h += s.img ? '<div class="two">'+figure(s)+pts(s.pts)+'</div>' : pts(s.pts, true);
+  }
+  document.getElementById('slide').innerHTML = h;
+
+  document.getElementById('prev').disabled = (i === 0 && !shown);
+  document.getElementById('next').textContent =
+    (s.kind === 'quiz' && !shown) ? '정답 보기 ▶'
+    : (i === DECK.length-1 ? '수업 마치기' : '다음 ▶');
+}
+
+function reveal(){ if(DECK[i].kind === 'quiz' && !shown){ shown = true; render(); } }
+function next(){
+  var s = DECK[i];
+  if(s.kind === 'quiz' && !shown){ reveal(); return; }
+  if(i >= DECK.length-1){ close(); return; }   /* 예전에는 index.html 로 나갔다 — 이제 층을 닫는다 */
+  go(i+1);
+}
+function prev(){
+  if(shown){ shown = false; render(); return; }
+  if(i > 0) go(i-1);
+}
+function go(k){ i = Math.max(0, Math.min(DECK.length-1, k)); shown = false; render(); }
+
+/* 아래 이동 바의 실제 높이를 알려 준다 (backbar 단추를 그 위로 올리기 위해) */
+function syncNavHeight(){
+  var n = document.querySelector('.nav');
+  if(n) document.documentElement.style.setProperty('--navh', n.offsetHeight + 'px');
+}
+window.addEventListener('resize', syncNavHeight);
+
+document.addEventListener('keydown', function(e){
+  /* 이 슬라이드는 index 안의 한 층이 됐다 — 열려 있을 때만 단축키를 듣는다 */
+  if(!document.body.classList.contains('bd33-open')) return;
+  if(e.target.tagName === 'SELECT') return;
+  if(e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown'){ e.preventDefault(); next(); }
+  else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ e.preventDefault(); prev(); }
+  else if(e.key === 'Home'){ e.preventDefault(); go(0); }
+  else if(e.key === 'End'){ e.preventDefault(); go(DECK.length-1); }
+});
+
+/* 열 때마다 첫 장부터 시작한다.
+   예전에는 board.html 이 따로 열리는 페이지라 늘 1장부터였다 — 그 느낌을 그대로 둔다. */
+function open(){
+  var el = document.getElementById('boardwrap');
+  el.classList.remove('hide');
+  document.body.classList.add('bd33-open');
+  go(0);
+  syncNavHeight();
+}
+function close(){
+  document.getElementById('boardwrap').classList.add('hide');
+  document.body.classList.remove('bd33-open');
+}
+window.SlideDeck = { open: open, close: close, next: next, prev: prev, reveal: reveal, go: go };
+
+})();
+</script>
 </body>
 </html>

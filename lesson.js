@@ -229,5 +229,5 @@ const LESSON = [
 
 ];
 
-/* board.html 에서 window.LESSON 으로 읽는다 (const 는 window 에 자동으로 붙지 않는다) */
+/* index.html 의 수업 슬라이드 층에서 window.LESSON 으로 읽는다 (const 는 window 에 자동으로 붙지 않는다) */
 window.LESSON = LESSON;
