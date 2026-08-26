@@ -37,11 +37,11 @@
   .btn:disabled{opacity:.4;cursor:default}
   .cards{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:560px){.cards{grid-template-columns:1fr}}
-  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;color:var(--text);
     padding:16px;text-align:left;transition:.15s}
   .card:hover{border-color:var(--amber);transform:translateY(-2px)}
   .card .ic{font-size:26px}
-  .card .t{font-size:16px;font-weight:700;margin-top:6px}
+  .card .t{font-size:16px;font-weight:700;margin-top:6px;color:var(--text)}
   .card .d{font-size:12px;color:var(--sub);margin-top:4px;line-height:1.5}
   .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px}
   .hr{height:1px;background:var(--border);margin:14px 0}
@@ -67,6 +67,9 @@
   .feedback.show{display:block}
   .feedback.ok{background:rgba(87,214,141,.12);border:1px solid var(--green)}
   .feedback.no{background:rgba(234,91,98,.12);border:1px solid var(--red)}
+  .hintbox{margin-top:10px;padding:11px 13px;border-radius:9px;font-size:13.5px;line-height:1.55;
+    background:rgba(79,209,232,.1);border:1px solid var(--cyan);color:var(--text);display:none}
+  .hintbox.show{display:block}
   .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .pill{font-size:12px;color:var(--sub);background:var(--panel2);border:1px solid var(--border);
     padding:4px 10px;border-radius:20px}
@@ -136,7 +139,7 @@
   <div class="canvas" id="lbcanvas"><img id="lbimg" src="" alt="" /></div>
 </div>
 
-<script src="data.js"></script>
+<script src="data.js?v=20260826"></script>
 <!-- 결과 수집 위젯: 교사가 공유링크에 ?rc=<Apps Script exec URL> 를 붙이면 제출 활성화 -->
 <script src="https://hongyul67-cpu.github.io/links/collector.js"
         data-tool="자동화설비 실기 도면게임"></script>
@@ -219,13 +222,13 @@ function renderHome(){
       <div class="ic">📐</div><div class="t">① 도면 해독 퀴즈</div>
       <div class="d">실제 공개도면을 보고 기호·구멍 개수·주서를 4지선다로 푼다.</div></button>
     <button class="card" onclick="go('match')">
-      <div class="ic">🧊</div><div class="t">③ 3면도 ↔ 3D 매칭</div>
+      <div class="ic">🧊</div><div class="t">② 3면도 ↔ 3D 매칭</div>
       <div class="d">정면·평면·측면도를 보고 알맞은 등각투상(3D) 형상을 고른다.</div></button>
     <button class="card" onclick="go('dim')">
-      <div class="ic">🔢</div><div class="t">④ 모델링 치수 찾기</div>
+      <div class="ic">🔢</div><div class="t">③ 모델링 치수 찾기</div>
       <div class="d">모델링에 필요한 치수를 도면에서 찾아 숫자로 입력한다.</div></button>
     <button class="card" onclick="go('task')">
-      <div class="ic">📋</div><div class="t">⑤ 도면별 과제 · 제출</div>
+      <div class="ic">📋</div><div class="t">④ 도면별 과제 · 제출</div>
       <div class="d">도면 하나를 골라 그 도면의 해독+치수 문제를 풀고 선생님께 제출한다.</div></button>
     <button class="card" onclick="go('edit')">
       <div class="ic">✏️</div><div class="t">문제 편집 · 추가</div>
@@ -301,7 +304,7 @@ function drawMatch(){
   const others=shuffle(DATA.filter(x=>x.id!==id)).slice(0,3).map(x=>x.id);
   const opts=shuffle([id,...others]);
   s.correctId=id; s.opts=opts;
-  app.innerHTML=header("③ 3면도 ↔ 3D 매칭",`이 도면(3면도)에 맞는 3D 형상은?`)+`
+  app.innerHTML=header("② 3면도 ↔ 3D 매칭",`이 도면(3면도)에 맞는 3D 형상은?`)+`
   <div class="panel">
     <div class="imgbox" onclick="openLB('${VIEWS(id)}','${esc(id+" 3면도")}')">
       <img src="${VIEWS(id)}" alt="3면도"><span class="zoomhint">🔍 눌러서 확대</span>
@@ -336,69 +339,88 @@ function answerMatch(oid){
 }
 function nextMatch(){
   const s=mState;s.i++;s.answered=false;
-  if(s.i>=s.order.length){finishSession("③ 3면도 ↔ 3D 매칭",s.correct,s.order.length,"match");return;}
+  if(s.i>=s.order.length){finishSession("② 3면도 ↔ 3D 매칭",s.correct,s.order.length,"match");return;}
   drawMatch();
 }
 
-/* ---------------- MODE 4 : DIMENSION ---------------- */
+/* ---------------- MODE 3 : DIMENSION ---------------- */
+/* 채점은 '한 번'만 — 맞을 때까지 다시 넣는 방식은 모두가 100점이 되어 배움이 안 된다.
+   힌트는 '어디를 보라'만 알려주고 숫자는 절대 말하지 않는다(정답은 채점 뒤에만 공개). */
 let dState=null;
 function renderDim(){
   const pool=shuffle(dimPool());
   if(!pool.length){app.innerHTML=header("모델링 치수 찾기")+`<div class="panel">등록된 치수 문제가 없습니다.</div>`;return;}
-  dState={pool,i:0,correct:0,answered:false,tries:0}; sessStart=Date.now();
+  dState={pool,i:0,correct:0,answered:false,hinted:false,hintUsed:0}; sessStart=Date.now();
   bumpTry("치수찾기");
   drawDim();
 }
+/* 치수 문제 한 문항의 입력·버튼 영역 (연습 모드와 도면별 과제에서 같이 쓴다) */
+function dimInputHTML(q,fn){
+  return `<div class="q">${esc(q.ask)}</div>
+    <div class="row">
+      <input class="numin mono" id="numin" type="number" inputmode="decimal" placeholder="?" autocomplete="off"
+        onkeydown="if(event.key==='Enter')${fn}Check()">
+      <span class="unit">${esc(q.unit||"mm")}</span>
+      <button class="btn cyan" id="chk" onclick="${fn}Check()">확인 (한 번만)</button>
+      <button class="btn ghost" id="hintb" onclick="${fn}Hint()">💡 어디를 볼까?</button>
+      <button class="link" id="giveb" onclick="${fn}GiveUp()">모르겠어요</button>
+    </div>
+    <div class="hintbox" id="hb"></div>`;
+}
+/* 채점 결과 표시 — 정답이든 오답이든 여기서 끝내고 다음으로 넘어간다 */
+function dimGrade(q,v,gaveUp){
+  const ok = !gaveUp && Math.abs(v-q.answer)<1e-6;
+  const fb=$("fb"); fb.className="feedback show "+(ok?"ok":"no");
+  const mine = gaveUp ? "" : `<div class="sub" style="margin-top:6px">내가 쓴 값: <b class="mono">${v}${esc(q.unit||"mm")}</b></div>`;
+  fb.innerHTML = (ok ? `✅ 정답! <b class="mono">${q.answer}${esc(q.unit||"mm")}</b>`
+                     : `❌ 정답은 <b class="mono">${q.answer}${esc(q.unit||"mm")}</b> 입니다.`)
+    + (q.why?`<div style="margin-top:6px">${esc(q.why)}</div>`:"")
+    + (ok?"":mine);
+  ["chk","hintb","giveb"].forEach(id=>{const b=$(id); if(b){b.disabled=true;b.style.display=id==="chk"?"":"none";}});
+  if($("numin"))$("numin").disabled=true;
+  if($("nextb"))$("nextb").style.display="";
+  return ok;
+}
+function dimShowHint(q){
+  const hb=$("hb"); if(!hb)return;
+  hb.className="hintbox show";
+  hb.innerHTML="💡 "+esc(q.hint||"도면의 치수선을 다시 확인하세요.")+
+    `<div class="sub" style="margin-top:4px;font-size:11.5px">힌트는 위치만 알려 줘요. 숫자는 직접 읽어야 합니다.</div>`;
+  const b=$("hintb"); if(b)b.style.display="none";
+}
 function drawDim(){
   const s=dState,q=s.pool[s.i];
-  app.innerHTML=header("④ 모델링 치수 찾기",`도면 ${q.did} · ${q.dname}`)+`
+  app.innerHTML=header("③ 모델링 치수 찾기",`도면 ${q.did} · ${q.dname}`)+`
   <div class="panel">
     <div class="imgbox" onclick="openLB('${IMG(q.did)}','${esc(q.did+" "+q.dname)}')">
       <img src="${IMG(q.did)}" alt="도면 ${q.did}"><span class="zoomhint">🔍 눌러서 확대</span>
     </div>
-    <div class="q">${esc(q.ask)}</div>
-    <div class="row">
-      <input class="numin mono" id="numin" type="number" inputmode="decimal" placeholder="?" autocomplete="off"
-        onkeydown="if(event.key==='Enter')checkDim()">
-      <span class="unit">${esc(q.unit||"mm")}</span>
-      <button class="btn cyan" id="chk" onclick="checkDim()">확인</button>
-      <button class="link" onclick="showHint()">힌트 보기</button>
-    </div>
+    ${dimInputHTML(q,"dim")}
     <div class="feedback" id="fb"></div>
     <div class="row" style="margin-top:14px">
       <span class="pill">${s.i+1} / ${s.pool.length}</span>
       <span class="pill">맞힘 ${s.correct}</span>
       <div class="spacer"></div>
-      <button class="btn amber" id="nextb" style="display:none" onclick="nextDim()">다음 →</button>
+      <button class="btn amber" id="nextb" style="display:none" onclick="nextDim()">${s.i+1>=s.pool.length?"결과 보기 →":"다음 →"}</button>
     </div>
     <div class="progress"><i style="width:${(s.i)/s.pool.length*100}%"></i></div>
   </div>`;
   setTimeout(()=>$("numin")&&$("numin").focus(),50);
 }
-function showHint(){const q=dState.pool[dState.i];const fb=$("fb");fb.className="feedback show";fb.style.background="rgba(79,209,232,.1)";fb.style.border="1px solid var(--cyan)";fb.innerHTML="💡 "+esc(q.hint||"도면 치수선을 다시 확인하세요.");}
-function checkDim(){
+function dimHint(){const s=dState; if(s.answered)return; if(!s.hinted){s.hinted=true;s.hintUsed++;} dimShowHint(s.pool[s.i]);}
+function dimCheck(){
   const s=dState; if(s.answered)return;
-  const q=s.pool[s.i], v=parseFloat($("numin").value);
-  if(isNaN(v)){toast("숫자를 입력하세요");return;}
-  const ok=Math.abs(v-q.answer)<1e-6;
-  const fb=$("fb");
-  if(ok){
-    s.answered=true;s.correct++;
-    fb.className="feedback show ok";fb.innerHTML=`✅ 정답! <b class="mono">${q.answer}${esc(q.unit||"mm")}</b>`;
-    $("chk").disabled=true;$("numin").disabled=true;$("nextb").style.display="";
-  }else{
-    s.tries++;
-    fb.className="feedback show no";
-    fb.innerHTML=`❌ 다시 · 정답이 아니에요.`+(s.tries>=2?` (힌트: ${esc(q.hint||"")})`:"");
-    if(s.tries>=3){
-      s.answered=true;
-      fb.innerHTML=`정답은 <b class="mono">${q.answer}${esc(q.unit||"mm")}</b> 입니다. `+esc(q.hint||"");
-      $("chk").disabled=true;$("numin").disabled=true;$("nextb").style.display="";
-    }
-  }
+  const v=parseFloat($("numin").value);
+  if(isNaN(v)){toast("숫자를 먼저 입력하세요");return;}
+  s.answered=true;
+  if(dimGrade(s.pool[s.i],v,false))s.correct++;
 }
-function nextDim(){const s=dState;s.i++;s.answered=false;s.tries=0;
-  if(s.i>=s.pool.length){finishSession("④ 모델링 치수 찾기",s.correct,s.pool.length,"dim");return;}
+function dimGiveUp(){
+  const s=dState; if(s.answered)return;
+  s.answered=true; dimGrade(s.pool[s.i],null,true);
+}
+function nextDim(){const s=dState;s.i++;s.answered=false;s.hinted=false;
+  if(s.i>=s.pool.length){finishSession("③ 모델링 치수 찾기",s.correct,s.pool.length,"dim");return;}
   drawDim();}
 
 /* ---------------- session result ---------------- */
@@ -500,7 +522,7 @@ function renderRank(){
 /* ---------------- MODE 5 : 도면별 과제(제출) ---------------- */
 let pState=null;
 function renderTaskList(){
-  app.innerHTML=header("⑤ 도면별 과제","풀 도면(과제)을 선택하세요")+`
+  app.innerHTML=header("④ 도면별 과제","풀 도면(과제)을 선택하세요")+`
   <div class="panel">
     <div class="sub" style="margin-bottom:10px">도면 하나를 고르면 그 도면의 <b>해독 문제 + 치수 문제</b>를 순서대로 풀고, 끝나면 결과를 제출할 수 있어요.</div>
     <div class="tasklist">
@@ -518,7 +540,7 @@ function startTask(id){
     .concat((d.quiz||[]).map(q=>({kind:'quiz',data:q})))
     .concat((d.dims||[]).map(q=>({kind:'dim',data:q})));
   if(!items.length){toast("이 도면엔 등록된 문제가 없어요");return;}
-  pState={id:id,name:d.name,items,i:0,correct:0,answered:false,tries:0,start:Date.now()};
+  pState={id:id,name:d.name,items,i:0,correct:0,answered:false,hinted:false,hintUsed:0,start:Date.now()};
   bumpTry("도면"+id);
   drawTask();
 }
@@ -544,14 +566,7 @@ function drawTask(){
       </div>${foot}</div>`;
   }else{
     app.innerHTML=head+`<div class="panel">${imgbox}
-      <div class="q">${esc(q.ask)}</div>
-      <div class="row">
-        <input class="numin mono" id="numin" type="number" inputmode="decimal" placeholder="?" autocomplete="off"
-          onkeydown="if(event.key==='Enter')checkTaskDim()">
-        <span class="unit">${esc(q.unit||"mm")}</span>
-        <button class="btn cyan" id="chk" onclick="checkTaskDim()">확인</button>
-        <button class="link" onclick="taskHint()">힌트 보기</button>
-      </div>${foot}</div>`;
+      ${dimInputHTML(q,"task")}${foot}</div>`;
     setTimeout(()=>$("numin")&&$("numin").focus(),50);
   }
 }
@@ -567,29 +582,20 @@ function answerTaskQuiz(i){
   fb.innerHTML=(ok?"✅ 정답! ":"❌ 오답. 정답: <b>"+esc(q.choices[q.answer])+"</b><br>")+esc(q.explain||"");
   $("nextb").style.display="";
 }
-function taskHint(){const q=pState.items[pState.i].data;const fb=$("fb");fb.className="feedback show";fb.style.background="rgba(79,209,232,.1)";fb.style.border="1px solid var(--cyan)";fb.innerHTML="💡 "+esc(q.hint||"도면 치수선을 다시 확인하세요.");}
-function checkTaskDim(){
+function taskHint(){const s=pState; if(s.answered)return; if(!s.hinted){s.hinted=true;s.hintUsed=(s.hintUsed||0)+1;} dimShowHint(s.items[s.i].data);}
+function taskCheck(){
   const s=pState; if(s.answered)return;
-  const q=s.items[s.i].data, v=parseFloat($("numin").value);
-  if(isNaN(v)){toast("숫자를 입력하세요");return;}
-  const fb=$("fb");
-  if(Math.abs(v-q.answer)<1e-6){
-    s.answered=true;s.correct++;
-    fb.className="feedback show ok";fb.innerHTML=`✅ 정답! <b class="mono">${q.answer}${esc(q.unit||"mm")}</b>`;
-    $("chk").disabled=true;$("numin").disabled=true;$("nextb").style.display="";
-  }else{
-    s.tries++;
-    fb.className="feedback show no";
-    fb.innerHTML=`❌ 다시 · 정답이 아니에요.`+(s.tries>=2?` (힌트: ${esc(q.hint||"")})`:"");
-    if(s.tries>=3){
-      s.answered=true;
-      fb.innerHTML=`정답은 <b class="mono">${q.answer}${esc(q.unit||"mm")}</b> 입니다. `+esc(q.hint||"");
-      $("chk").disabled=true;$("numin").disabled=true;$("nextb").style.display="";
-    }
-  }
+  const v=parseFloat($("numin").value);
+  if(isNaN(v)){toast("숫자를 먼저 입력하세요");return;}
+  s.answered=true;
+  if(dimGrade(s.items[s.i].data,v,false))s.correct++;
+}
+function taskGiveUp(){
+  const s=pState; if(s.answered)return;
+  s.answered=true; dimGrade(s.items[s.i].data,null,true);
 }
 function nextTask(){
-  const s=pState; s.i++; s.answered=false; s.tries=0;
+  const s=pState; s.i++; s.answered=false; s.hinted=false;
   if(s.i>=s.items.length){finishTask();return;}
   drawTask();
 }
@@ -673,7 +679,7 @@ function renderEditOne(id){
     <div id="quizedit">${(d.quiz||[]).map((q,i)=>quizEditHTML(q,i)).join("")}</div>
 
     <div class="hr"></div>
-    <div class="row"><b class="tag">④ 치수 찾기(숫자 입력)</b><div class="spacer"></div>
+    <div class="row"><b class="tag">③ 치수 찾기(숫자 입력)</b><div class="spacer"></div>
       <button class="btn" onclick="addD('${d.id}')">＋ 문항 추가</button></div>
     <div id="dimedit">${(d.dims||[]).map((q,i)=>dimEditHTML(q,i)).join("")}</div>
 
@@ -706,11 +712,14 @@ function dimEditHTML(q,i){
       <div style="flex:1"><label>정답(숫자)</label><input type="text" class="d_ans" value="${esc(q.answer)}"></div>
       <div style="width:90px"><label>단위</label><input type="text" class="d_unit" value="${esc(q.unit||"mm")}"></div>
     </div>
-    <label>힌트</label><textarea class="d_hint">${esc(q.hint||"")}</textarea>
+    <label>힌트 — <b>숫자를 적지 말 것</b>. 어디를 보라고만 안내 (예: 평면도 맨 위 가로 치수)</label>
+    <textarea class="d_hint">${esc(q.hint||"")}</textarea>
+    <label>정답 근거 — 채점한 뒤에 보여 줄 설명 (예: H7 앞 숫자가 기본 지름)</label>
+    <textarea class="d_why">${esc(q.why||"")}</textarea>
   </div>`;
 }
 function addQ(id){const d=DATA.find(x=>x.id===id);d.quiz=d.quiz||[];d.quiz.push({q:"",choices:["","","",""],answer:0,explain:""});saveData(DATA);go('editOne',id);}
-function addD(id){const d=DATA.find(x=>x.id===id);d.dims=d.dims||[];d.dims.push({ask:"",answer:0,unit:"mm",hint:""});saveData(DATA);go('editOne',id);}
+function addD(id){const d=DATA.find(x=>x.id===id);d.dims=d.dims||[];d.dims.push({ask:"",answer:0,unit:"mm",hint:"",why:""});saveData(DATA);go('editOne',id);}
 function rmQ(i){const id=curEditId();const d=DATA.find(x=>x.id===id);collectOne(d);d.quiz.splice(i,1);saveData(DATA);go('editOne',id);}
 function rmD(i){const id=curEditId();const d=DATA.find(x=>x.id===id);collectOne(d);d.dims.splice(i,1);saveData(DATA);go('editOne',id);}
 function curEditId(){return document.querySelector("h1").textContent.replace(/[^0-9A-Za-z]/g,"").replace("편집","");}
@@ -731,6 +740,7 @@ function collectOne(d){
     answer:parseFloat(el.querySelector(".d_ans").value)||0,
     unit:el.querySelector(".d_unit").value.trim()||"mm",
     hint:el.querySelector(".d_hint").value.trim(),
+    why:(el.querySelector(".d_why")||{value:""}).value.trim(),
   }));
 }
 function saveOne(id){const d=DATA.find(x=>x.id===id);collectOne(d);saveData(DATA);toast("저장됨");go('edit');}
