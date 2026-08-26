@@ -9,10 +9,11 @@
   :root{
     --bg:#0c1017; --panel:#161c27; --panel2:#1e2634; --line:#2c3648;
     --ink:#e9eefa; --dim:#98a5bd; --accent:#5b8cff; --good:#3ad995; --gold:#ffd166;
-    /* 화면 크기에 맞춰 글자가 같이 커진다 — 교실 뒤에서도 읽히게 */
-    --h:clamp(24px,3.6vw,52px);
-    --p:clamp(15px,1.9vw,29px);
-    --s:clamp(12px,1.1vw,17px);
+    /* 화면 크기에 맞춰 글자가 같이 커진다 — 교실 뒤에서도 읽히게.
+       가로뿐 아니라 세로(vh)도 함께 본다. 넓지만 낮은 창에서 글이 넘치지 않게. */
+    --h:clamp(22px,min(3.6vw,6.2vh),52px);
+    --p:clamp(14px,min(1.9vw,3.3vh),29px);
+    --s:clamp(11px,min(1.1vw,1.9vh),17px);
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -34,8 +35,11 @@
   .bar>i{display:block;height:100%;background:var(--accent);transition:width .25s}
 
   /* 본문 — 한 화면에 들어가야 하므로 넘치면 줄어들게만 한다 */
-  .body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:min(3vh,26px) 3vw}
-  .slide{width:100%;max-width:1400px;max-height:100%;display:flex;flex-direction:column;gap:min(2.2vh,18px)}
+  /* 아래쪽 여백을 조금 더 두는 이유: 공용 backbar 단추가 왼쪽 아래에 떠 있어서
+     내용이 거기까지 내려오면 글자를 가린다 */
+  .body{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
+    padding:min(3vh,26px) 3vw calc(min(3vh,26px) + 34px)}
+  .slide{width:100%;max-width:1400px;display:flex;flex-direction:column;gap:min(2.2vh,18px)}
   h2{font-size:var(--h);font-weight:900;margin:0;letter-spacing:-.02em;line-height:1.2}
   .lead{font-size:var(--p);color:var(--accent);font-weight:800;margin:0}
 
@@ -57,7 +61,7 @@
   .syms{display:grid;gap:min(1.6vh,14px);grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
   .sym{background:var(--panel);border:1px solid var(--line);border-radius:12px;
     padding:min(2vh,18px) min(1.8vw,20px);display:flex;flex-direction:column;gap:6px}
-  .sym .k{font-size:clamp(20px,2.9vw,42px);font-weight:900;color:var(--gold);
+  .sym .k{font-size:clamp(18px,min(2.9vw,5vh),42px);font-weight:900;color:var(--gold);
     font-family:ui-monospace,Consolas,Menlo,monospace;line-height:1.15}
   .sym .d{font-size:var(--p);color:var(--ink)}
 
@@ -67,8 +71,8 @@
     padding:min(1.8vh,15px) min(1.8vw,18px);font-size:var(--p);display:flex;gap:12px;align-items:flex-start}
   ol.check li::before{content:"☐";color:var(--good);font-weight:900;flex:none}
 
-  /* 확인 문제 */
-  .qhead{font-size:var(--h);font-weight:900;margin:0;line-height:1.25}
+  /* 확인 문제 — 보기 4개 + 해설까지 한 화면에 들어가야 해서 제목을 조금 작게 잡는다 */
+  .qhead{font-size:clamp(18px,min(2.6vw,4.5vh),38px);font-weight:900;margin:0;line-height:1.25}
   .opts{display:flex;flex-direction:column;gap:min(1.4vh,11px);margin:0;padding:0;list-style:none;counter-reset:o}
   .opts li{counter-increment:o;background:var(--panel);border:2px solid var(--line);border-radius:11px;
     padding:min(1.7vh,15px) min(1.8vw,18px);font-size:var(--p);display:flex;gap:12px;cursor:pointer}
@@ -86,12 +90,16 @@
   .nav{display:flex;gap:10px;padding:10px 16px;border-top:1px solid var(--line);
     background:rgba(10,14,20,.92);flex:none}
   .nav button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:10px;
-    padding:min(1.6vh,14px);font-size:clamp(14px,1.4vw,20px);font-weight:800;cursor:pointer;font-family:inherit}
+    padding:min(1.6vh,14px);font-size:clamp(13px,min(1.4vw,2.4vh),20px);font-weight:800;cursor:pointer;font-family:inherit}
   .nav .prev{width:22%}
   .nav .next{flex:1;background:linear-gradient(135deg,#3b82f6,#5b8cff);border-color:transparent;color:#fff}
   .nav button:disabled{opacity:.35;cursor:default}
   .hintkey{font-size:var(--s);color:var(--dim);align-self:center;padding:0 4px;white-space:nowrap}
   @media (max-width:640px){ .hintkey{display:none} }
+
+  /* 공용 backbar.js 단추가 화면 왼쪽 아래에 붙는데, 그 자리가 「◀ 이전」과 겹친다.
+     아래 이동 바 높이(--navh)만큼 위로 올려 준다. */
+  #bb-btn{bottom:calc(var(--navh,64px) + 12px)!important}
 </style>
 </head>
 <body>
@@ -193,6 +201,13 @@ function prev(){
 }
 function go(k){ i = Math.max(0, Math.min(DECK.length-1, k)); shown = false; render(); }
 
+/* 아래 이동 바의 실제 높이를 알려 준다 (backbar 단추를 그 위로 올리기 위해) */
+function syncNavHeight(){
+  var n = document.querySelector('.nav');
+  if(n) document.documentElement.style.setProperty('--navh', n.offsetHeight + 'px');
+}
+window.addEventListener('resize', syncNavHeight);
+
 document.addEventListener('keydown', function(e){
   if(e.target.tagName === 'SELECT') return;
   if(e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown'){ e.preventDefault(); next(); }
@@ -202,6 +217,7 @@ document.addEventListener('keydown', function(e){
 });
 
 render();
+syncNavHeight();
 </script>
 <script src="https://hongyul67-cpu.github.io/links/backbar.js"></script>
 </body>
