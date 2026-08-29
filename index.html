@@ -646,9 +646,11 @@ function renderTaskList(){
 }
 function startTask(id){
   const d=DATA.find(x=>x.id===id); if(!d){go('task');return;}
+  /* 치수 문제를 먼저 낸다 — 해독 퀴즈의 보기·발문에 치수 값이 들어 있어
+     퀴즈를 먼저 풀면 뒤따르는 치수 문제의 답이 새기 때문이다. */
   const items=[]
-    .concat((d.quiz||[]).map(q=>({kind:'quiz',data:q})))
-    .concat((d.dims||[]).map(q=>({kind:'dim',data:q})));
+    .concat((d.dims||[]).map(q=>({kind:'dim',data:q})))
+    .concat((d.quiz||[]).map(q=>({kind:'quiz',data:q})));
   if(!items.length){toast("이 도면엔 등록된 문제가 없어요");return;}
   pState={id:id,name:d.name,items,i:0,correct:0,answered:false,hinted:false,hintUsed:0,start:Date.now()};
   bumpTry("도면"+id);
