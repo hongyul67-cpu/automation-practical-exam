@@ -466,7 +466,10 @@ function renderDim(){
 }
 /* 치수 문제 한 문항의 입력·버튼 영역 (연습 모드와 도면별 과제에서 같이 쓴다) */
 function dimInputHTML(q,fn){
-  return `<div class="q">${esc(q.ask)}</div>
+  /* 도면에 그대로 적혀 있지 않은 값은 미리 알려 준다 — 없는 숫자를 찾다가 포기하지 않게 */
+  const badge = q.calc ? `<div class="row" style="margin-bottom:6px"><b class="tag">🧮 계산해서 구하기</b>
+      <span class="sub" style="font-size:11.5px">도면에 적힌 값들로 계산해야 나오는 치수입니다.</span></div>` : "";
+  return badge + `<div class="q">${esc(q.ask)}</div>
     <div class="row">
       <input class="numin mono" id="numin" type="number" inputmode="decimal" placeholder="?" autocomplete="off"
         onkeydown="if(event.key==='Enter')${fn}Check()">
@@ -479,7 +482,10 @@ function dimInputHTML(q,fn){
 }
 /* 채점 결과 표시 — 정답이든 오답이든 여기서 끝내고 다음으로 넘어간다 */
 function dimGrade(q,v,gaveUp){
-  const ok = !gaveUp && Math.abs(v-q.answer)<1e-6;
+  /* 계산해서 구하는 문항은 나눗셈이 들어가 소수가 되기도 한다.
+     tol 이 있으면 그만큼 어긋나도 맞은 것으로 본다(없으면 예전처럼 정확히 일치). */
+  const tol = (q.tol!=null) ? Math.abs(q.tol) : 1e-6;
+  const ok = !gaveUp && Math.abs(v-q.answer) <= tol + 1e-9;
   const fb=$("fb"); fb.className="feedback show "+(ok?"ok":"no");
   const mine = gaveUp ? "" : `<div class="sub" style="margin-top:6px">내가 쓴 값: <b class="mono">${v}${esc(q.unit||"mm")}</b></div>`;
   fb.innerHTML = (ok ? `✅ 정답! <b class="mono">${q.answer}${esc(q.unit||"mm")}</b>`
@@ -495,7 +501,9 @@ function dimShowHint(q){
   const hb=$("hb"); if(!hb)return;
   hb.className="hintbox show";
   hb.innerHTML="💡 "+esc(q.hint||"도면의 치수선을 다시 확인하세요.")+
-    `<div class="sub" style="margin-top:4px;font-size:11.5px">힌트는 위치만 알려 줘요. 숫자는 직접 읽어야 합니다.</div>`;
+    `<div class="sub" style="margin-top:4px;font-size:11.5px">${q.calc
+      ? "힌트는 <b>어떤 값을 어떻게</b> 쓸지만 알려 줘요. 숫자는 직접 읽고 계산해야 합니다."
+      : "힌트는 위치만 알려 줘요. 숫자는 직접 읽어야 합니다."}</div>`;
   const b=$("hintb"); if(b)b.style.display="none";
 }
 function drawDim(){
@@ -823,7 +831,10 @@ function dimEditHTML(q,i){
     <div class="row">
       <div style="flex:1"><label>정답(숫자)</label><input type="text" class="d_ans" value="${esc(q.answer)}"></div>
       <div style="width:90px"><label>단위</label><input type="text" class="d_unit" value="${esc(q.unit||"mm")}"></div>
+      <div style="width:110px"><label>허용 오차 ±</label><input type="text" class="d_tol" value="${q.tol!=null?esc(q.tol):""}" placeholder="예: 0.01"></div>
     </div>
+    <label style="display:flex;align-items:center;gap:6px">
+      <input type="checkbox" class="d_calc" ${q.calc?"checked":""}> 🧮 계산해서 구하는 문항 (도면에 그대로 적혀 있지 않음)</label>
     <label>힌트 — <b>숫자를 적지 말 것</b>. 어디를 보라고만 안내 (예: 평면도 맨 위 가로 치수)</label>
     <textarea class="d_hint">${esc(q.hint||"")}</textarea>
     <label>정답 근거 — 채점한 뒤에 보여 줄 설명 (예: H7 앞 숫자가 기본 지름)</label>
@@ -853,6 +864,9 @@ function collectOne(d){
     unit:el.querySelector(".d_unit").value.trim()||"mm",
     hint:el.querySelector(".d_hint").value.trim(),
     why:(el.querySelector(".d_why")||{value:""}).value.trim(),
+    calc:!!(el.querySelector(".d_calc")||{}).checked,
+    tol:(function(){const t=(el.querySelector(".d_tol")||{value:""}).value.trim();
+                    return t===""?undefined:(parseFloat(t)||undefined);})(),
   }));
 }
 function saveOne(id){const d=DATA.find(x=>x.id===id);collectOne(d);saveData(DATA);toast("저장됨");go('edit');}
