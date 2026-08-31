@@ -336,7 +336,7 @@ function renderHome(){
       <div class="d">정면·평면·측면도를 보고 알맞은 등각투상(3D) 형상을 고른다.</div></button>
     <button class="card" onclick="go('dim')">
       <div class="ic">🔢</div><div class="t">③ 모델링 치수 찾기</div>
-      <div class="d">모델링에 필요한 치수를 도면에서 찾아 숫자로 입력한다.</div></button>
+      <div class="d">도면에서 찾아 읽는 <b>기본</b>과 적힌 값으로 계산하는 <b>응용</b>을 골라, 원하는 문항 수만큼 풀고 제출한다.</div></button>
     <button class="card" onclick="go('task')">
       <div class="ic">📋</div><div class="t">④ 도면별 과제 · 제출</div>
       <div class="d">도면 하나를 골라 그 도면의 해독+치수 문제를 풀고 선생님께 제출한다.</div></button>
@@ -457,9 +457,50 @@ function nextMatch(){
 /* 채점은 '한 번'만 — 맞을 때까지 다시 넣는 방식은 모두가 100점이 되어 배움이 안 된다.
    힌트는 '어디를 보라'만 알려주고 숫자는 절대 말하지 않는다(정답은 채점 뒤에만 공개). */
 let dState=null;
+/* 시작하기 전에 «어떤 문제를 몇 개» 풀지 고르게 한다.
+   기본(도면에서 찾아 읽기)과 응용(적힌 값으로 계산하기)은 쓰는 힘이 달라서
+   따로 연습하고 싶을 때가 있고, 수업 시간에 맞춰 문항 수도 줄여야 한다. */
+let dimPick={kind:"mix", n:10};
+function dimCount(kind){
+  const p=dimPool();
+  return kind==="basic" ? p.filter(q=>!q.calc).length
+       : kind==="calc"  ? p.filter(q=>q.calc).length : p.length;
+}
 function renderDim(){
-  const pool=shuffle(dimPool());
-  if(!pool.length){app.innerHTML=header("모델링 치수 찾기")+`<div class="panel">등록된 치수 문제가 없습니다.</div>`;return;}
+  const all=dimPool();
+  if(!all.length){app.innerHTML=header("모델링 치수 찾기")+`<div class="panel">등록된 치수 문제가 없습니다.</div>`;return;}
+  const nB=dimCount("basic"), nC=dimCount("calc"), nA=all.length;
+  const kinds=[["basic",`📖 기본만`,`도면에 적힌 치수를 찾아 읽기 · ${nB}개`],
+               ["calc",`🧮 응용만`,`적힌 값으로 계산해서 구하기 · ${nC}개`],
+               ["mix",`🔀 섞어서`,`기본과 응용을 섞어 출제 · ${nA}개`]];
+  const maxN=dimCount(dimPick.kind);
+  const nums=[5,10,20,0].filter(n=>n===0||n<=maxN);
+  app.innerHTML=header("③ 모델링 치수 찾기","무엇을 몇 개 풀지 고르세요")+`
+  <div class="panel">
+    <div class="sub" style="margin-bottom:8px">① 문제 유형</div>
+    <div class="modegrid">${kinds.map(([k,t,d])=>`
+      <button class="mode ${dimPick.kind===k?"on":""}" onclick="dimSetKind('${k}')">
+        <div class="t">${t}</div><div class="d">${d}</div></button>`).join("")}</div>
+    <div class="sub" style="margin:16px 0 8px">② 문항 수 <b class="tag">${dimPick.n===0?"전체":dimPick.n+"개"}</b></div>
+    <div class="row">${nums.map(n=>`
+      <button class="btn ${dimPick.n===n?"cyan":"ghost"}" onclick="dimSetN(${n})">${n===0?`전체 ${maxN}개`:n+"개"}</button>`).join("")}</div>
+    <div class="row" style="margin-top:18px">
+      <button class="btn amber" onclick="startDim()">시작하기 →</button>
+      <button class="btn" onclick="go('home')">홈으로</button>
+    </div>
+    <div class="sub" style="margin-top:12px;font-size:12px">
+      채점은 문항마다 <b>한 번</b>이에요. 끝나면 결과를 선생님께 제출할 수 있어요.</div>
+  </div>`;
+}
+function dimSetKind(k){dimPick.kind=k; const m=dimCount(k); if(dimPick.n!==0&&dimPick.n>m)dimPick.n=0; renderDim();}
+function dimSetN(n){dimPick.n=n; renderDim();}
+function startDim(){
+  let pool=dimPool();
+  if(dimPick.kind==="basic")pool=pool.filter(q=>!q.calc);
+  else if(dimPick.kind==="calc")pool=pool.filter(q=>q.calc);
+  pool=shuffle(pool);
+  if(dimPick.n>0)pool=pool.slice(0,dimPick.n);
+  if(!pool.length){toast("고른 조건에 맞는 문제가 없어요");return;}
   dState={pool,i:0,correct:0,answered:false,hinted:false,hintUsed:0}; sessStart=Date.now();
   bumpTry("치수찾기");
   drawDim();
@@ -570,7 +611,14 @@ function openSubmit(suffix,correct,total,dur,extra){
     mode:suffix, retry:getTry(suffix), tier:rankTier(), detail:rankDetail()
   },extra||{}));
 }
-function submitResult(mode,correct,total,dur){ openSubmit(MODE_LABEL[mode]||mode,correct,total,dur); }
+const DIM_KIND_LABEL={basic:"기본",calc:"응용(계산)",mix:"기본+응용"};
+/* 치수 찾기는 고른 유형에 따라 쓰는 힘이 달라, 활동 이름에 유형을 함께 남긴다.
+   (시트에서 «치수찾기 · 응용(계산)» 처럼 갈려 보인다) */
+function submitResult(mode,correct,total,dur){
+  let label=MODE_LABEL[mode]||mode;
+  if(mode==="dim") label+=" · "+(DIM_KIND_LABEL[dimPick.kind]||"");
+  openSubmit(label,correct,total,dur);
+}
 function finishSession(title,correct,total,again){
   const pct=Math.round(correct/total*100);
   const dur=sessStart?Math.round((Date.now()-sessStart)/1000):0;
@@ -587,6 +635,7 @@ function finishSession(title,correct,total,again){
       <div><div class="n" style="color:var(--cyan)">${correct}/${total}</div><div class="l">맞힌 개수</div></div>
       <div><div class="n">${mm}:${ss}</div><div class="l">걸린 시간</div></div>
     </div>
+    ${again==="dim"?`<div class="sub" style="margin-top:8px;font-size:12.5px">푼 유형 — <b>${DIM_KIND_LABEL[dimPick.kind]||""}</b> ${total}문항</div>`:""}
     ${rpBox(rp)}
     <div class="row" style="justify-content:center">
       ${submitBtn}
