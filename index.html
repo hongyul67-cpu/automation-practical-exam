@@ -124,6 +124,24 @@
   .warn{font-size:12px;color:var(--amber);background:rgba(242,169,59,.1);border:1px solid var(--amber);
     border-radius:8px;padding:8px 10px;margin-top:10px;line-height:1.5}
   a.plain{color:var(--cyan)}
+  /* 📖 배우기 (2026-09-30 그림08) */
+  .card.learncard{grid-column:1/-1;border-color:var(--amber);background:linear-gradient(135deg,rgba(242,169,59,.14),var(--panel) 60%)}
+  .lr-sec{font-size:12px;color:var(--amber);font-weight:700;letter-spacing:.5px}
+  .lr-t{font-size:19px;font-weight:800;margin:4px 0 12px;line-height:1.4}
+  .lr-lead{font-size:15px;color:var(--cyan);font-weight:700;margin-bottom:8px}
+  .lr-fig{margin:4px 0 14px}
+  .lr-fig figure.fig figcaption{color:var(--sub)}
+  .lr-cap{font-size:12.5px;color:var(--sub);text-align:center;margin-top:6px;line-height:1.45}
+  .lr-pts{margin:0;padding-left:20px;line-height:1.7;font-size:15px}
+  .lr-pts li{margin-bottom:6px}
+  .lr-sym{display:grid;gap:9px;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));margin:2px 0 14px}
+  .lr-sym div{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 13px}
+  .lr-sym b{display:block;font-size:18px;color:var(--amber);margin-bottom:3px}
+  .lr-sym span{font-size:13.5px;line-height:1.45}
+  .lr-check{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
+  .lr-check li{background:var(--panel2);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14.5px;line-height:1.5}
+  .lr-check li::before{content:"☐ ";color:var(--green);font-weight:800}
+  .lr-quiz{margin-top:14px;border-top:1px dashed var(--border);padding-top:10px}
 
 </style>
 </head>
@@ -188,7 +206,7 @@ function lbZoom(dir){lbScale=Math.max(.4,Math.min(4,lbScale+dir*0.3));const im=$
 $("lb").addEventListener("click",e=>{if(e.target.id==="lb"||e.target.id==="lbcanvas")closeLB();});
 
 /* ---------------- routing ---------------- */
-function go(view,arg){window.scrollTo(0,0);({home:renderHome,quiz:renderQuiz,match:renderMatch,dim:renderDim,task:renderTaskList,rank:renderRank,edit:renderEditor,editOne:renderEditOne}[view]||renderHome)(arg);}
+function go(view,arg){window.scrollTo(0,0);({home:renderHome,learn:renderLearn,quiz:renderQuiz,match:renderMatch,dim:renderDim,task:renderTaskList,rank:renderRank,edit:renderEditor,editOne:renderEditOne}[view]||renderHome)(arg);}
 
 function header(title,sub){
   return `<div class="top">
@@ -218,6 +236,9 @@ function renderHome(){
   ${hasRank()?`<div id="rankcard" onclick="go('rank')" style="margin-bottom:4px;cursor:pointer">${Rank.card()}</div>
   <div style="text-align:right;margin-bottom:12px"><button class="link" onclick="go('rank')">🏆 계급표 보기 ›</button></div>`:""}
   <div class="cards">
+    <button class="card learncard" onclick="go('learn')">
+      <div class="ic">📖</div><div class="t">배우기 — 처음이면 여기부터</div>
+      <div class="d">도면에 나오는 선·기호·치수를 <b>그림과 함께</b> 넘겨 보며 익힌다. 정답을 다 보여 주니 맞힐 필요 없다.</div></button>
     <button class="card" onclick="go('quiz')">
       <div class="ic">📐</div><div class="t">① 도면 해독 퀴즈</div>
       <div class="d">실제 공개도면을 보고 기호·구멍 개수·주서를 4지선다로 푼다.</div></button>
@@ -235,6 +256,66 @@ function renderHome(){
       <div class="d">선생님용. 문제·정답 수정, 도면 추가, JSON 내보내기/불러오기.</div></button>
   </div>
   <div class="warn">💡 도면 이미지를 누르면 크게 확대해서 볼 수 있어요. 초안 문제이니 편집 화면에서 검수·보완하세요.</div>`;
+}
+
+/* ---------------- 📖 배우기 (2026-09-30 그림08) ----------------
+   문제 게임만 있고 배우는 화면이 없었다. 수업 슬라이드 원고(lesson.js)를 학생이 혼자 넘겨 보게 한다.
+   원고·그림은 슬라이드와 같은 것을 쓴다 — 그림은 figs.js(links/fig.js), 도면 크롭은 images/lesson/.
+   확인 문제는 채점하지 않는다. 누르면 정답과 해설이 바로 보인다(배우기 = 정답을 다 보여 주는 단계). */
+let lState=null;
+function learnPages(){
+  const out=[];
+  (window.LESSON||[]).forEach(s=>{
+    if(s.kind==="quiz"){ const p=out[out.length-1]; if(p){ p.quiz=s; return; } }
+    out.push(Object.assign({},s));
+  });
+  return out;
+}
+function renderLearn(i){
+  const pages=learnPages();
+  if(!pages.length){ app.innerHTML=header("배우기")+`<div class="panel">배우기 원고를 불러오지 못했습니다. 새로고침해 주세요.</div>`; return; }
+  lState={pages,i:Math.max(0,Math.min(pages.length-1,i||0))};
+  drawLearn();
+}
+function learnGo(d){ if(!lState)return; lState.i=Math.max(0,Math.min(lState.pages.length-1,lState.i+d)); window.scrollTo(0,0); drawLearn(); }
+function learnImg(){ const p=lState.pages[lState.i]; if(p&&p.img) openLB(p.img,p.cap||"도면"); }
+function learnReveal(k){
+  const p=lState.pages[lState.i], q=p&&p.quiz; if(!q)return;
+  document.querySelectorAll("#lrq .choice").forEach((b,n)=>{
+    b.disabled=true;
+    if(n===q.a) b.classList.add("correct"); else if(n===k) b.classList.add("wrong"); else b.classList.add("dim");
+  });
+  $("lrfb").classList.add("show");
+  const rb=$("lrrev"); if(rb) rb.remove();
+}
+function drawLearn(){
+  const {pages,i}=lState, p=pages[i], last=i===pages.length-1;
+  let fig="";
+  if(p.fig && window.FIG && FIG.has(p.fig)) fig=`<div class="lr-fig">${FIG.figure(p.fig)}</div>`;
+  else if(p.img) fig=`<div class="lr-fig"><div class="imgbox" onclick="learnImg()"><img src="${p.img}" alt="${esc(p.cap||"")}"><span class="zoomhint">🔍 크게</span></div>${p.cap?`<div class="lr-cap">${esc(p.cap)}</div>`:""}</div>`;
+  const sym=(p.sym||[]).length?`<div class="lr-sym">${p.sym.map(x=>`<div><b>${esc(x.k)}</b><span>${x.d}</span></div>`).join("")}</div>`:"";
+  const chk=(p.items||[]).length?`<ul class="lr-check">${p.items.map(x=>`<li>${x}</li>`).join("")}</ul>`:"";
+  const pts=(p.pts||[]).length?`<ul class="lr-pts">${p.pts.map(x=>`<li>${x}</li>`).join("")}</ul>`:"";
+  const q=p.quiz;
+  const quiz=q?`<div class="lr-quiz" id="lrq"><div class="tag">✅ 확인 문제 — 채점하지 않아요</div>
+      <div class="q">${q.q}</div>
+      <div class="choices">${q.o.map((o,k)=>`<button class="choice" onclick="learnReveal(${k})">${k+1}. ${o}</button>`).join("")}</div>
+      <div style="margin-top:10px"><button class="btn" id="lrrev" onclick="learnReveal(-1)">정답 보기</button></div>
+      <div class="feedback ok" id="lrfb"><b>정답 ${q.a+1}번</b> — ${q.e}</div></div>`:"";
+  app.innerHTML=header("📖 배우기","도면 읽기 — 선·기호·치수를 그림으로 먼저 익힌다")+`
+  <div class="row" style="margin-bottom:6px"><span class="pill">${i+1} / ${pages.length}</span><span class="pill">${esc(p.s||"")}</span></div>
+  <div class="progress" style="margin-bottom:12px"><i style="width:${Math.round((i+1)/pages.length*100)}%"></i></div>
+  <div class="panel">
+    <div class="lr-sec">${esc(p.s||"")}</div>
+    <div class="lr-t">${p.t||""}</div>
+    ${p.lead?`<div class="lr-lead">${esc(p.lead)}</div>`:""}
+    ${fig}${sym}${chk}${pts}${quiz}
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn" onclick="learnGo(-1)" ${i===0?"disabled":""}>← 이전</button>
+    <div class="spacer"></div>
+    ${last?`<button class="btn amber" onclick="go('quiz')">🎯 이제 문제 풀기</button>`:`<button class="btn amber" onclick="learnGo(1)">다음 →</button>`}
+  </div>`;
 }
 
 /* ---------------- MODE 1 : QUIZ ---------------- */
@@ -844,6 +925,10 @@ go('home');
      원고는 lesson.js(이 저장소 것), 화면은 links 의 공용 board-pro.js 다.
      예전에는 이 자리에 뷰어가 통째로 박혀 있었다. 저장소마다 사본을 두면
      같은 버그를 각자 고치게 되므로, 이제 공용 파일 하나만 부른다. -->
+<!-- 그림 — 그리는 도구(fig.js)는 links 의 공용 파일, 그림 모음(figs.js)은 이 저장소 것.
+     📖 배우기와 수업 슬라이드가 같은 그림을 쓴다 (2026-09-30 그림08) -->
+<script src="https://hongyul67-cpu.github.io/links/fig.js"></script>
+<script src="figs.js"></script>
 <script src="lesson.js"></script>
 <script src="https://hongyul67-cpu.github.io/links/board-pro.js"></script>
 <script>
@@ -897,6 +982,15 @@ function build(){
     var sl = { u:s.s || '', t:s.t || '', pts:pts, img:s.img || '', cap:s.cap || '' };
     if(s.kind === 'symbol' && s.sym)   sl._fig = symHtml(s.sym);
     if(s.kind === 'check'  && s.items) sl._fig = checkHtml(s.items);
+    /* 그림(figs.js) — 📖 배우기와 같은 그림. 기호 카드가 있는 장은 그림 옆에 카드를 둔다 */
+    if(s.fig && window.FIG && FIG.has(s.fig)){
+      var svg = FIG.svgOf(s.fig);
+      sl._fig = sl._fig
+        ? '<div style="display:grid;gap:12px;width:100%;align-items:center;' +
+          'grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr))"><div>' + svg + '</div>' + sl._fig + '</div>'
+        : svg;
+      if(!sl.cap) sl.cap = FIG.cap(s.fig);
+    }
     out.push(sl);
   });
   return out;
