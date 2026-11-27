@@ -213,7 +213,7 @@ function header(title,sub){
     <div><div class="brand">자동화설비기능사 · 실기 대비</div>
     <h1>${esc(title)}</h1><div class="sub">${esc(sub||"")}</div></div>
     <div class="spacer"></div>
-    <button class="btn ghost" onclick="go('home')">← 홈</button></div>`;
+    <button class="btn ghost" onclick="go('home')">🏠 처음으로</button></div>`;
 }
 
 /* ---------------- HOME ---------------- */
@@ -457,7 +457,7 @@ function renderDim(){
       <button class="btn ${dimPick.n===n?"cyan":"ghost"}" onclick="dimSetN(${n})">${n===0?`전체 ${maxN}개`:n+"개"}</button>`).join("")}</div>
     <div class="row" style="margin-top:18px">
       <button class="btn amber" onclick="startDim()">시작하기 →</button>
-      <button class="btn" onclick="go('home')">홈으로</button>
+      <button class="btn" onclick="go('home')">🏠 처음으로</button>
     </div>
     <div class="sub" style="margin-top:12px;font-size:12px">
       채점은 문항마다 <b>한 번</b>이에요. 끝나면 결과를 선생님께 제출할 수 있어요.</div>
@@ -611,7 +611,7 @@ function finishSession(title,correct,total,again){
     <div class="row" style="justify-content:center">
       ${submitBtn}
       <button class="btn cyan" onclick="go('${again}')">다시 풀기</button>
-      <button class="btn" onclick="go('home')">홈으로</button>
+      <button class="btn" onclick="go('home')">🏠 처음으로</button>
     </div>
     ${rcReady()?`<div class="sub" style="margin-top:12px;font-size:12px">🧑‍🏫 제출하면 활동·성취·반복·계급을 바탕으로 한 <b>생기부(세특) 키워드</b>가 자동으로 함께 기록돼요.</div>`
               :`<div class="sub" style="margin-top:12px;font-size:12px">※ 선생님이 나눠준 <b>제출용 링크</b>로 열면 ‘결과 제출’ 버튼이 나타나요.</div>`}
